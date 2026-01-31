@@ -1,0 +1,22 @@
+{
+  "name": "hospital-oxygen-dashboard",
+  "version": "1.0.0",
+  "description": "A software dashboard that visualizes predicted hospital oxygen system data, implements alarm logic, and supports monitoring, decision-making, and data logging for a simulation-based oxygen supply system.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "client": "cd frontend && npm start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
