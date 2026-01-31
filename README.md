@@ -22,24 +22,21 @@ A responsive monitoring dashboard for a Senior Design hospital oxygen supply sys
 - **Demand Coverage** (85-99%)
 
 ### Technologies
-- **Frontend**: React, Recharts for data visualization, Axios for API calls
-- **Backend**: Node.js, Express.js
-- **Data**: Simulated real-time oxygen system data with predictions
+- **Frontend**: React and Recharts for rich visualization components
+- **Data**: Client-side simulated real-time oxygen system metrics with predictions (no backend yet)
 
 ## Project Structure
 
 ```
 hospital-oxygen-dashboard/
-├── backend/
-│   └── server.js          # Express server with simulated data endpoints
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── App.js         # Main dashboard component
+│   │   ├── App.js         # Main dashboard component + simulation logic
 │   │   ├── App.css        # Dashboard styles
 │   │   └── index.js       # React entry point
 │   └── package.json
-├── package.json           # Root package.json for backend
+├── package.json           # Helper scripts that proxy to the frontend app
 └── README.md
 ```
 
@@ -57,57 +54,31 @@ hospital-oxygen-dashboard/
    cd hospital-oxygen-dashboard
    ```
 
-2. **Install backend dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Install frontend dependencies**
+2. **Install frontend dependencies**
    ```bash
    cd frontend
    npm install
    cd ..
    ```
 
-### Running the Application
+### Running the Dashboard
 
-#### Option 1: Run Backend and Frontend Separately
+Run everything from the project root (the script proxies into the `frontend/` folder):
 
-**Terminal 1 - Start Backend Server:**
 ```bash
-npm run dev
+npm start
 ```
-The backend server will start on `http://localhost:5000`
 
-**Terminal 2 - Start Frontend:**
+This launches the React development server on `http://localhost:3000` and continuously regenerates simulated telemetry inside the browser. For a production build, run:
+
 ```bash
-npm run client
+npm run build
 ```
-The React app will start on `http://localhost:3000`
+which builds the frontend assets in `frontend/build`.
 
-#### Option 2: Production Build
+## Data Simulation
 
-1. **Build the frontend:**
-   ```bash
-   cd frontend
-   npm run build
-   cd ..
-   ```
-
-2. **Start the backend:**
-   ```bash
-   npm start
-   ```
-
-## API Endpoints
-
-The backend provides the following RESTful API endpoints:
-
-- `GET /api/status` - Current system status and latest readings
-- `GET /api/data` - Historical data for time-series charts (last 20 minutes)
-- `GET /api/alarms` - Active alarms and alerts
-- `GET /api/backup` - Backup oxygen system status
-- `GET /api/predictions` - Predicted demand data (next 50 minutes)
+All telemetry, alarms, backup information, and predictions are generated on interval by helper functions inside [frontend/src/App.js](frontend/src/App.js). This keeps the UI interactive while the backend is on hold. When you are ready to connect real APIs, replace the simulation helpers with network calls.
 
 ## Features in Detail
 
@@ -140,11 +111,14 @@ Edit line in `frontend/src/App.js`:
 const interval = setInterval(fetchData, 5000); // Change 5000 to desired milliseconds
 ```
 
-### Modifying Thresholds
-Edit the threshold logic in `backend/server.js`:
+### Tuning Status Thresholds
+Edit the threshold logic in `createStatusSnapshot` within [frontend/src/App.js](frontend/src/App.js):
 ```javascript
 status: latest.purity > 96 && latest.pressure > 48 ? 'optimal' : 'warning'
 ```
+
+### Adjusting Simulation Ranges
+Customize the generated telemetry by editing `generateSimulatedData` in [frontend/src/App.js](frontend/src/App.js).
 
 ### Styling
 Customize colors and layouts in `frontend/src/App.css`

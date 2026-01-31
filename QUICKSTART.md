@@ -5,32 +5,23 @@
 ### 1. Install Dependencies
 
 ```bash
-# Install backend dependencies
-npm install
-
-# Install frontend dependencies
 cd frontend
 npm install
 cd ..
 ```
 
-### 2. Start the Backend Server
+### 2. Start the Dashboard
 
-Open a terminal and run:
+Open a terminal at the project root and run:
 ```bash
-npm run dev
+npm start
 ```
 
-The backend will start on `http://localhost:5000`
+The React development server will open automatically at `http://localhost:3000`.
 
-### 3. Start the Frontend
+### 3. Explore the Simulation
 
-Open a **new terminal** and run:
-```bash
-npm run client
-```
-
-The dashboard will open automatically at `http://localhost:3000`
+The dashboard continuously generates simulated telemetry in the browser—no backend required. Leave the tab open to watch metrics, alarms, and predictions refresh every 5 seconds.
 
 ## What You'll See
 
@@ -66,19 +57,14 @@ Monitor your backup oxygen supply:
 
 ## Troubleshooting
 
-### Backend Won't Start
-- Make sure port 5000 is not already in use
-- Check that you ran `npm install` in the root directory
-
-### Frontend Won't Start
-- Make sure port 3000 is not already in use
-- Check that you ran `npm install` in the frontend directory
-- Ensure the backend is running first
+### Dashboard Won't Start
+- Make sure port 3000 is free or allow the prompt to pick another port
+- Double-check that you ran `npm install` inside `frontend/`
 
 ### No Data Showing
-- Verify the backend is running on port 5000
-- Check browser console for error messages
-- Make sure both servers started successfully
+- Wait a few seconds—the simulator updates every 5 seconds
+- Check the browser console for errors (e.g., ad blockers interfering with localhost)
+- Restart `npm start` if the page stopped updating
 
 ## Need Help?
 

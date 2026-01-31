@@ -1,9 +1,89 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { FiActivity, FiBarChart2, FiTrendingUp, FiBell, FiSettings, FiFileText, FiArrowUpRight } from 'react-icons/fi';
 import './App.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Local simulation helpers mimic the historical backend endpoints so the UI stays interactive.
+const generateSimulatedData = () => {
+  const baseTime = Date.now();
+  return Array.from({ length: 20 }, (_, index) => ({
+    timestamp: baseTime - (19 - index) * 60000,
+    purity: 95 + Math.random() * 4,
+    flowRate: 50 + Math.random() * 20,
+    pressure: 45 + Math.random() * 10,
+    demandCoverage: 85 + Math.random() * 14
+  }));
+};
+
+const createStatusSnapshot = (dataPoints) => {
+  const latest = dataPoints[dataPoints.length - 1];
+  if (!latest) {
+    const now = Date.now();
+    return { status: 'warning', purity: '0.00', flowRate: '0.00', pressure: '0.00', demandCoverage: '0.00', timestamp: now };
+  }
+
+  return {
+    status: latest.purity > 96 && latest.pressure > 48 ? 'optimal' : 'warning',
+    purity: latest.purity.toFixed(2),
+    flowRate: latest.flowRate.toFixed(2),
+    pressure: latest.pressure.toFixed(2),
+    demandCoverage: latest.demandCoverage.toFixed(2),
+    timestamp: latest.timestamp
+  };
+};
+
+const generateAlarms = () => {
+  const alarms = [];
+  const now = Date.now();
+
+  if (Math.random() > 0.6) {
+    alarms.push({
+      id: 1,
+      severity: 'warning',
+      message: 'Oxygen purity below optimal level',
+      timestamp: now - 300000,
+      acknowledged: false
+    });
+  }
+
+  if (Math.random() > 0.7) {
+    alarms.push({
+      id: 2,
+      severity: 'critical',
+      message: 'Pressure fluctuation detected',
+      timestamp: now - 180000,
+      acknowledged: false
+    });
+  }
+
+  if (Math.random() > 0.8) {
+    alarms.push({
+      id: 3,
+      severity: 'info',
+      message: 'Routine maintenance scheduled',
+      timestamp: now - 600000,
+      acknowledged: true
+    });
+  }
+
+  return alarms;
+};
+
+const generateBackupStatus = () => ({
+  mode: Math.random() > 0.5 ? 'standby' : 'active',
+  level: 70 + Math.random() * 30,
+  remainingHours: 24 + Math.random() * 24,
+  lastChecked: Date.now() - 3600000
+});
+
+const generatePredictions = () => {
+  const baseTime = Date.now();
+  return Array.from({ length: 10 }, (_, index) => ({
+    timestamp: baseTime + (index + 1) * 300000,
+    predictedDemand: 60 + Math.random() * 15,
+    confidence: 0.85 + Math.random() * 0.1
+  }));
+};
 
 function App() {
   const [status, setStatus] = useState(null);
@@ -14,34 +94,27 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const fetchData = useCallback(() => {
+    try {
+      const simulatedData = generateSimulatedData();
+      setData(simulatedData);
+      setStatus(createStatusSnapshot(simulatedData));
+      setAlarms(generateAlarms());
+      setBackup(generateBackupStatus());
+      setPredictions(generatePredictions());
+      setLoading(false);
+      setError(null);
+    } catch (err) {
+      setError('Failed to generate simulated data');
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000); // Update every 5 seconds
     return () => clearInterval(interval);
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [statusRes, dataRes, alarmsRes, backupRes, predictionsRes] = await Promise.all([
-        axios.get(`${API_BASE}/status`),
-        axios.get(`${API_BASE}/data`),
-        axios.get(`${API_BASE}/alarms`),
-        axios.get(`${API_BASE}/backup`),
-        axios.get(`${API_BASE}/predictions`)
-      ]);
-
-      setStatus(statusRes.data);
-      setData(dataRes.data);
-      setAlarms(alarmsRes.data);
-      setBackup(backupRes.data);
-      setPredictions(predictionsRes.data);
-      setLoading(false);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch data from server');
-      setLoading(false);
-    }
-  };
+  }, [fetchData]);
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -70,36 +143,49 @@ function App() {
     <div className="dashboard">
       {/* Sidebar */}
       <aside className="sidebar">
-        <h2>🏥 O₂ Monitor</h2>
+        <h2>
+          <FiActivity className="brand-icon" aria-hidden="true" />
+          O₂ Monitor
+        </h2>
         <nav>
           <ul className="nav-menu">
             <li>
               <a href="#dashboard" className="active">
-                <span className="nav-icon">📊</span>
+                <span className="nav-icon" aria-hidden="true">
+                  <FiBarChart2 />
+                </span>
                 Dashboard
               </a>
             </li>
             <li>
               <a href="#analytics">
-                <span className="nav-icon">📈</span>
+                <span className="nav-icon" aria-hidden="true">
+                  <FiTrendingUp />
+                </span>
                 Analytics
               </a>
             </li>
             <li>
               <a href="#alarms">
-                <span className="nav-icon">🔔</span>
+                <span className="nav-icon" aria-hidden="true">
+                  <FiBell />
+                </span>
                 Alarms
               </a>
             </li>
             <li>
               <a href="#settings">
-                <span className="nav-icon">⚙️</span>
+                <span className="nav-icon" aria-hidden="true">
+                  <FiSettings />
+                </span>
                 Settings
               </a>
             </li>
             <li>
               <a href="#reports">
-                <span className="nav-icon">📄</span>
+                <span className="nav-icon" aria-hidden="true">
+                  <FiFileText />
+                </span>
                 Reports
               </a>
             </li>
@@ -116,7 +202,8 @@ function App() {
           </div>
         </div>
         <div className="alarm-count">
-          🔔 {unacknowledgedAlarms} Active Alarms
+          <FiBell aria-hidden="true" />
+          {unacknowledgedAlarms} Active Alarms
         </div>
       </header>
 
@@ -130,7 +217,10 @@ function App() {
               {status.purity}
               <span className="kpi-unit">%</span>
             </div>
-            <div className="kpi-trend up">↑ Optimal range</div>
+            <div className="kpi-trend up">
+              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
+              Optimal range
+            </div>
           </div>
 
           <div className="kpi-card">
@@ -139,7 +229,10 @@ function App() {
               {status.flowRate}
               <span className="kpi-unit">L/min</span>
             </div>
-            <div className="kpi-trend up">↑ Normal</div>
+            <div className="kpi-trend up">
+              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
+              Normal
+            </div>
           </div>
 
           <div className="kpi-card">
@@ -148,7 +241,10 @@ function App() {
               {status.pressure}
               <span className="kpi-unit">PSI</span>
             </div>
-            <div className="kpi-trend up">↑ Stable</div>
+            <div className="kpi-trend up">
+              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
+              Stable
+            </div>
           </div>
 
           <div className="kpi-card">
@@ -157,7 +253,10 @@ function App() {
               {status.demandCoverage}
               <span className="kpi-unit">%</span>
             </div>
-            <div className="kpi-trend up">↑ Sufficient</div>
+            <div className="kpi-trend up">
+              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
+              Sufficient
+            </div>
           </div>
         </div>
 
