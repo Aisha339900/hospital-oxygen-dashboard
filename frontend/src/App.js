@@ -1,7 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 import { FiActivity, FiBarChart2, FiTrendingUp, FiBell, FiSettings, FiFileText, FiArrowUpRight } from 'react-icons/fi';
 import './App.css';
+
+const PIE_COLORS = ['#4c6ef5', '#63e6be', '#ffd43b', '#ff6b6b'];
 
 // Local simulation helpers mimic the historical backend endpoints so the UI stays interactive.
 const generateSimulatedData = () => {
@@ -85,6 +101,44 @@ const generatePredictions = () => {
   }));
 };
 
+const generateStorageLevels = () => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayIndex = new Date().getDay();
+  return days.map((day, index) => ({
+    day,
+    isToday: index === todayIndex,
+    level: 30 + Math.random() * 60
+  }));
+};
+
+const generateFlowBreakdown = () => {
+  const labels = ['ICU', 'ER', 'Surgery', 'Wards', 'Lab'];
+  return labels.map((label) => ({
+    department: label,
+    value: 8 + Math.random() * 12
+  }));
+};
+
+const generatePressureBreakdown = () => {
+  return [
+    { name: 'Primary Tanks', value: 38 + Math.random() * 8 },
+    { name: 'Manifold', value: 20 + Math.random() * 6 },
+    { name: 'Pipelines', value: 25 + Math.random() * 6 },
+    { name: 'Other', value: 10 + Math.random() * 5 }
+  ];
+};
+
+const generateSupplyDemand = () => {
+  const demand = 50 + Math.random() * 10;
+  const supply = demand + (Math.random() * 6 - 3);
+  return {
+    currentDemand: demand.toFixed(1),
+    currentSupply: supply.toFixed(1),
+    status: supply >= demand ? 'Supply meets demand' : 'Supply below demand',
+    forecast: supply >= demand ? 'No supply risk detected' : 'Monitor supply closely'
+  };
+};
+
 function App() {
   const [status, setStatus] = useState(null);
   const [data, setData] = useState([]);
@@ -93,6 +147,10 @@ function App() {
   const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [storageLevels, setStorageLevels] = useState([]);
+  const [flowBreakdown, setFlowBreakdown] = useState([]);
+  const [pressureBreakdown, setPressureBreakdown] = useState([]);
+  const [supplyDemand, setSupplyDemand] = useState(null);
 
   const fetchData = useCallback(() => {
     try {
@@ -102,6 +160,10 @@ function App() {
       setAlarms(generateAlarms());
       setBackup(generateBackupStatus());
       setPredictions(generatePredictions());
+      setStorageLevels(generateStorageLevels());
+      setFlowBreakdown(generateFlowBreakdown());
+      setPressureBreakdown(generatePressureBreakdown());
+      setSupplyDemand(generateSupplyDemand());
       setLoading(false);
       setError(null);
     } catch (err) {
@@ -138,6 +200,8 @@ function App() {
   }
 
   const unacknowledgedAlarms = alarms.filter(a => !a.acknowledged).length;
+  const lastUpdated = formatTimestamp(status.timestamp);
+  const supplyIsHealthy = supplyDemand && parseFloat(supplyDemand.currentSupply) >= parseFloat(supplyDemand.currentDemand);
 
   return (
     <div className="dashboard">
@@ -209,6 +273,12 @@ function App() {
 
       {/* Main Content */}
       <main className="main-content">
+        <div className="status-strip">
+          <div className="status-pill warning">Warning</div>
+          <div className="status-pill neutral">Alarms: {unacknowledgedAlarms}</div>
+          <div className="status-pill neutral">Last Update: {lastUpdated}</div>
+        </div>
+
         {/* KPI Cards */}
         <div className="kpi-grid">
           <div className="kpi-card">
@@ -260,71 +330,119 @@ function App() {
           </div>
         </div>
 
-        {/* Time Series Chart */}
-        <div className="chart-container">
-          <h3 className="chart-title">Oxygen Metrics - Real-time Monitoring</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="timestamp" 
-                tickFormatter={formatTimestamp}
-                style={{ fontSize: '0.85rem' }}
-              />
-              <YAxis style={{ fontSize: '0.85rem' }} />
-              <Tooltip 
-                labelFormatter={formatTimestamp}
-                contentStyle={{ borderRadius: '8px' }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="purity" stroke="#28a745" name="Purity (%)" strokeWidth={2} />
-              <Line type="monotone" dataKey="flowRate" stroke="#007bff" name="Flow Rate (L/min)" strokeWidth={2} />
-              <Line type="monotone" dataKey="pressure" stroke="#ffc107" name="Pressure (PSI)" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="chart-grid">
+          <div className="chart-card large">
+            <div className="chart-header">
+              <div>
+                <p className="chart-label">Oxygen Purity vs Time</p>
+                <span className="chart-subtitle">Current week vs previous week</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
+                <XAxis
+                  dataKey="timestamp"
+                  tickFormatter={formatTimestamp}
+                  style={{ fontSize: '0.8rem' }}
+                  tickLine={false}
+                />
+                <YAxis style={{ fontSize: '0.8rem' }} tickLine={false} axisLine={false} />
+                <Tooltip labelFormatter={formatTimestamp} contentStyle={{ borderRadius: '8px', borderColor: '#e9ecef' }} />
+                <Legend />
+                <Line type="monotone" dataKey="purity" stroke="#51cf66" name="Purity (%)" strokeWidth={3} dot={false} />
+                <Line type="monotone" dataKey="flowRate" stroke="#339af0" name="Flow Rate" strokeWidth={3} strokeDasharray="5 5" dot={false} />
+                <Line type="monotone" dataKey="pressure" stroke="#ffa94d" name="Pressure" strokeWidth={2} dot={false} opacity={0.7} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card storage-card">
+            <div className="chart-header">
+              <div>
+                <p className="chart-label">Storage Level vs Time</p>
+                <span className="chart-subtitle">Weekly snapshot</span>
+              </div>
+            </div>
+            <ul className="storage-list">
+              {storageLevels.map((item) => (
+                <li key={item.day} className={`storage-item ${item.isToday ? 'active' : ''}`}>
+                  <span>{item.day}</span>
+                  <div className="storage-bar">
+                    <div className="storage-bar-fill" style={{ width: `${item.level}%` }}></div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        {/* Demand Coverage Chart */}
-        <div className="chart-container">
-          <h3 className="chart-title">Demand Coverage Trend</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="timestamp" 
-                tickFormatter={formatTimestamp}
-                style={{ fontSize: '0.85rem' }}
-              />
-              <YAxis style={{ fontSize: '0.85rem' }} />
-              <Tooltip 
-                labelFormatter={formatTimestamp}
-                contentStyle={{ borderRadius: '8px' }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="demandCoverage" stroke="#17a2b8" name="Coverage (%)" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="chart-row">
+          <div className="chart-card">
+            <div className="chart-header">
+              <div>
+                <p className="chart-label">Flow Rate vs Time</p>
+                <span className="chart-subtitle">Departmental distribution</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={flowBreakdown}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f3f5" />
+                <XAxis dataKey="department" tickLine={false} axisLine={false} style={{ fontSize: '0.8rem' }} />
+                <YAxis tickLine={false} axisLine={false} style={{ fontSize: '0.8rem' }} />
+                <Tooltip cursor={{ fill: 'rgba(76, 110, 245, 0.1)' }} />
+                <Bar dataKey="value" fill="#748ffc" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-card">
+            <div className="chart-header">
+              <div>
+                <p className="chart-label">Pressure vs Time</p>
+                <span className="chart-subtitle">Asset contribution</span>
+              </div>
+            </div>
+            <div className="pie-wrapper">
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie data={pressureBreakdown} dataKey="value" innerRadius={60} outerRadius={90} paddingAngle={4}>
+                    {pressureBreakdown.map((entry, index) => (
+                      <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <ul className="pie-legend">
+                {pressureBreakdown.map((entry, index) => (
+                  <li key={entry.name}>
+                    <span className="legend-dot" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></span>
+                    {entry.name}
+                    <strong>{entry.value.toFixed(1)}%</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
 
         {/* Predictions Chart */}
         {predictions.length > 0 && (
-          <div className="chart-container">
-            <h3 className="chart-title">Predicted Demand (Next 50 minutes)</h3>
-            <ResponsiveContainer width="100%" height={200}>
+          <div className="chart-card">
+            <div className="chart-header">
+              <div>
+                <p className="chart-label">Predicted Demand (Next 50 minutes)</p>
+                <span className="chart-subtitle">5-minute intervals</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
               <LineChart data={predictions}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="timestamp" 
-                  tickFormatter={formatTimestamp}
-                  style={{ fontSize: '0.85rem' }}
-                />
-                <YAxis style={{ fontSize: '0.85rem' }} />
-                <Tooltip 
-                  labelFormatter={formatTimestamp}
-                  contentStyle={{ borderRadius: '8px' }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="predictedDemand" stroke="#6610f2" name="Predicted Demand (L/min)" strokeWidth={2} strokeDasharray="5 5" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f3f5" />
+                <XAxis dataKey="timestamp" tickFormatter={formatTimestamp} style={{ fontSize: '0.8rem' }} tickLine={false} />
+                <YAxis style={{ fontSize: '0.8rem' }} tickLine={false} axisLine={false} />
+                <Tooltip labelFormatter={formatTimestamp} />
+                <Line type="monotone" dataKey="predictedDemand" stroke="#845ef7" strokeWidth={3} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -379,6 +497,26 @@ function App() {
                 <span className="backup-label">Last Checked</span>
                 <span className="backup-value">{formatTimeAgo(backup.lastChecked)}</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {supplyDemand && (
+          <div className="panel-section">
+            <h3 className="panel-title">Demand vs Supply</h3>
+            <div className="supply-demand">
+              <div className="supply-row">
+                <span>Current Demand</span>
+                <strong>{supplyDemand.currentDemand} m³/h</strong>
+              </div>
+              <div className="supply-row">
+                <span>Current Supply</span>
+                <strong>{supplyDemand.currentSupply} m³/h</strong>
+              </div>
+              <div className={`supply-status ${supplyIsHealthy ? 'good' : 'bad'}`}>
+                Status: {supplyDemand.status}
+              </div>
+              <p className="supply-forecast">Forecast: {supplyDemand.forecast}</p>
             </div>
           </div>
         )}
