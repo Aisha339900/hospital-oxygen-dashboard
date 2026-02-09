@@ -8,16 +8,28 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell
+  AreaChart,
+  Area
 } from 'recharts';
-import { FiActivity, FiBarChart2, FiTrendingUp, FiBell, FiSettings, FiFileText, FiArrowUpRight } from 'react-icons/fi';
+import {
+  FiActivity,
+  FiBarChart2,
+  FiTrendingUp,
+  FiBell,
+  FiSettings,
+  FiFileText,
+  FiArrowUpRight,
+  FiSearch,
+  FiChevronDown,
+  FiDroplet,
+  FiLayers,
+  FiTarget,
+  FiSun,
+  FiInfo,
+  FiExternalLink,
+  FiX
+} from 'react-icons/fi';
 import './App.css';
-
-const PIE_COLORS = ['#4c6ef5', '#63e6be', '#ffd43b', '#ff6b6b'];
 
 // Local simulation helpers mimic the historical backend endpoints so the UI stays interactive.
 const generateSimulatedData = () => {
@@ -35,7 +47,14 @@ const createStatusSnapshot = (dataPoints) => {
   const latest = dataPoints[dataPoints.length - 1];
   if (!latest) {
     const now = Date.now();
-    return { status: 'warning', purity: '0.00', flowRate: '0.00', pressure: '0.00', demandCoverage: '0.00', timestamp: now };
+    return {
+      status: 'warning',
+      purity: '0.00',
+      flowRate: '0.00',
+      pressure: '0.00',
+      demandCoverage: '0.00',
+      timestamp: now
+    };
   }
 
   return {
@@ -92,40 +111,13 @@ const generateBackupStatus = () => ({
   lastChecked: Date.now() - 3600000
 });
 
-const generatePredictions = () => {
-  const baseTime = Date.now();
-  return Array.from({ length: 10 }, (_, index) => ({
-    timestamp: baseTime + (index + 1) * 300000,
-    predictedDemand: 60 + Math.random() * 15,
-    confidence: 0.85 + Math.random() * 0.1
-  }));
-};
-
 const generateStorageLevels = () => {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const todayIndex = new Date().getDay();
-  return days.map((day, index) => ({
-    day,
-    isToday: index === todayIndex,
-    level: 30 + Math.random() * 60
-  }));
-};
-
-const generateFlowBreakdown = () => {
-  const labels = ['ICU', 'ER', 'Surgery', 'Wards', 'Lab'];
+  const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
   return labels.map((label) => ({
-    department: label,
-    value: 8 + Math.random() * 12
+    label,
+    lastMonth: 35 + Math.random() * 25,
+    thisMonth: 40 + Math.random() * 35
   }));
-};
-
-const generatePressureBreakdown = () => {
-  return [
-    { name: 'Primary Tanks', value: 38 + Math.random() * 8 },
-    { name: 'Manifold', value: 20 + Math.random() * 6 },
-    { name: 'Pipelines', value: 25 + Math.random() * 6 },
-    { name: 'Other', value: 10 + Math.random() * 5 }
-  ];
 };
 
 const generateSupplyDemand = () => {
@@ -144,13 +136,11 @@ function App() {
   const [data, setData] = useState([]);
   const [alarms, setAlarms] = useState([]);
   const [backup, setBackup] = useState(null);
-  const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [storageLevels, setStorageLevels] = useState([]);
-  const [flowBreakdown, setFlowBreakdown] = useState([]);
-  const [pressureBreakdown, setPressureBreakdown] = useState([]);
   const [supplyDemand, setSupplyDemand] = useState(null);
+  const [detailView, setDetailView] = useState(null);
 
   const fetchData = useCallback(() => {
     try {
@@ -159,10 +149,7 @@ function App() {
       setStatus(createStatusSnapshot(simulatedData));
       setAlarms(generateAlarms());
       setBackup(generateBackupStatus());
-      setPredictions(generatePredictions());
       setStorageLevels(generateStorageLevels());
-      setFlowBreakdown(generateFlowBreakdown());
-      setPressureBreakdown(generatePressureBreakdown());
       setSupplyDemand(generateSupplyDemand());
       setLoading(false);
       setError(null);
@@ -199,329 +186,646 @@ function App() {
     return <div className="error">{error}</div>;
   }
 
-  const unacknowledgedAlarms = alarms.filter(a => !a.acknowledged).length;
+  const latestPoint = data[data.length - 1];
+  const earliestPoint = data[0];
+  const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
   const lastUpdated = formatTimestamp(status.timestamp);
-  const supplyIsHealthy = supplyDemand && parseFloat(supplyDemand.currentSupply) >= parseFloat(supplyDemand.currentDemand);
+  const supplyIsHealthy =
+    supplyDemand && parseFloat(supplyDemand.currentSupply) >= parseFloat(supplyDemand.currentDemand);
+  const timelineRange =
+    earliestPoint && latestPoint
+      ? `${formatTimestamp(earliestPoint.timestamp)} - ${formatTimestamp(latestPoint.timestamp)}`
+      : 'No live window';
+  const supplyFill = supplyDemand
+    ? Math.min((parseFloat(supplyDemand.currentSupply) / parseFloat(supplyDemand.currentDemand)) * 100, 140)
+    : 0;
+
+  const trendValue = (key, suffix = '') => {
+    if (!latestPoint || !earliestPoint) return `+0${suffix}`;
+    const delta = latestPoint[key] - earliestPoint[key];
+    const formatted = Math.abs(delta) >= 1 ? delta.toFixed(1) : delta.toFixed(2);
+    const sign = delta >= 0 ? '+' : '';
+    return `${sign}${formatted}${suffix}`;
+  };
+
+  const previewData = (rows, limit = 6) => {
+    if (!rows || rows.length === 0) return [];
+    const start = Math.max(rows.length - limit, 0);
+    return rows.slice(start);
+  };
+
+  const openDetails = (payload) => setDetailView(payload);
+  const closeDetails = () => setDetailView(null);
+
+  const openMetricDetails = (card) => {
+    openDetails({
+      title: card.label,
+      description: card.description,
+      meta: [
+        { label: 'Current value', value: card.value },
+        { label: 'Trend delta', value: card.delta },
+        { label: 'Context', value: card.helper }
+      ]
+    });
+  };
+
+  const buildChartDetail = (type) => {
+    switch (type) {
+      case 'purity':
+        return {
+          title: 'Oxygen Purity vs Time',
+          description: 'Live comparison between oxygen purity, flow rate, and pressure metrics for the last telemetry window.',
+          meta: [
+            { label: 'Live window', value: timelineRange },
+            { label: 'Data points', value: data.length }
+          ],
+          dataset: previewData(data, 8)
+        };
+      case 'storage':
+        return {
+          title: 'Storage Level vs Time',
+          description: 'Contrasts reserve storage levels month-over-month to highlight seasonal dips.',
+          meta: [
+            { label: 'Months tracked', value: storageLevels.length },
+            { label: 'Latest month', value: storageLevels[storageLevels.length - 1]?.label || 'N/A' }
+          ],
+          dataset: storageLevels
+        };
+      case 'flow':
+        return {
+          title: 'Flow Rate vs Time',
+          description: 'Highlights live patient consumption trends and sudden surges in oxygen flow.',
+          meta: [
+            {
+              label: 'Latest reading',
+              value: latestPoint ? `${latestPoint.flowRate.toFixed(1)} m³/h` : 'N/A'
+            },
+            { label: 'Live window', value: timelineRange }
+          ],
+          dataset: previewData(
+            data.map((point) => ({ timestamp: point.timestamp, flowRate: point.flowRate })),
+            8
+          )
+        };
+      case 'pressure':
+        return {
+          title: 'Pressure vs Time',
+          description: 'Monitors distribution manifold pressure to surface fluctuations before alarms fire.',
+          meta: [
+            {
+              label: 'Latest reading',
+              value: latestPoint ? `${latestPoint.pressure.toFixed(1)} bar` : 'N/A'
+            },
+            { label: 'Live window', value: timelineRange }
+          ],
+          dataset: previewData(
+            data.map((point) => ({ timestamp: point.timestamp, pressure: point.pressure })),
+            8
+          )
+        };
+      default:
+        return null;
+    }
+  };
+
+  const openChartDetails = (key) => {
+    const detail = buildChartDetail(key);
+    if (detail) {
+      openDetails(detail);
+    }
+  };
+
+  const favoriteLinks = ['Overview', 'Projects'];
+
+  const sidebarCollections = [
+    {
+      title: 'Dashboards',
+      items: [
+        { label: 'Default', icon: FiBarChart2, active: true },
+        { label: 'Monitoring', icon: FiActivity },
+        { label: 'Alarms & Alerts', icon: FiBell, badge: `${unacknowledgedAlarms || 0}` },
+        { label: 'Backup Status', icon: FiSettings },
+        { label: 'Demand & Supply', icon: FiTrendingUp },
+        { label: 'Trends', icon: FiFileText }
+      ]
+    },
+    {
+      title: 'Pages',
+      items: [
+        { label: 'Logs', icon: FiFileText },
+        { label: 'Settings', icon: FiSettings },
+        { label: 'System Info', icon: FiActivity }
+      ]
+    }
+  ];
+
+  const statCards = [
+    {
+      id: 'purity',
+      label: 'Oxygen purity %',
+      value: `${status.purity}%`,
+      delta: trendValue('purity', '%'),
+      helper: 'vs previous week',
+      icon: FiDroplet,
+      tone: 'mint',
+      description: 'Tracks delivered oxygen purity versus the regulatory baseline.'
+    },
+    {
+      id: 'flowRate',
+      label: 'Flow rate m³/h',
+      value: `${status.flowRate}`,
+      delta: trendValue('flowRate'),
+      helper: 'Average department',
+      icon: FiLayers,
+      tone: 'amber',
+      description: 'Measures total oxygen throughput per hour across wards.'
+    },
+    {
+      id: 'pressure',
+      label: 'Delivery pressure bar',
+      value: `${status.pressure}`,
+      delta: trendValue('pressure'),
+      helper: 'Stable manifold',
+      icon: FiTarget,
+      tone: 'rose',
+      description: 'Shows manifold pressure stability at the main distribution header.'
+    },
+    {
+      id: 'coverage',
+      label: 'Demand coverage %',
+      value: `${status.demandCoverage}%`,
+      delta: trendValue('demandCoverage', '%'),
+      helper: 'Capacity reserved',
+      icon: FiTrendingUp,
+      tone: 'gold',
+      description: 'Represents how much of current demand is secured by supply commitments.'
+    }
+  ];
+
+  const detailPayloads = {
+    purity: buildChartDetail('purity'),
+    storage: buildChartDetail('storage'),
+    flow: buildChartDetail('flow'),
+    pressure: buildChartDetail('pressure')
+  };
 
   return (
-    <div className="dashboard">
-      {/* Sidebar */}
+    <>
+      <div className="app-grid">
       <aside className="sidebar">
-        <h2>
-          <FiActivity className="brand-icon" aria-hidden="true" />
-          O₂ Monitor
-        </h2>
-        <nav>
-          <ul className="nav-menu">
-            <li>
-              <a href="#dashboard" className="active">
-                <span className="nav-icon" aria-hidden="true">
-                  <FiBarChart2 />
-                </span>
-                Dashboard
-              </a>
-            </li>
-            <li>
-              <a href="#analytics">
-                <span className="nav-icon" aria-hidden="true">
-                  <FiTrendingUp />
-                </span>
-                Analytics
-              </a>
-            </li>
-            <li>
-              <a href="#alarms">
-                <span className="nav-icon" aria-hidden="true">
-                  <FiBell />
-                </span>
-                Alarms
-              </a>
-            </li>
-            <li>
-              <a href="#settings">
-                <span className="nav-icon" aria-hidden="true">
-                  <FiSettings />
-                </span>
-                Settings
-              </a>
-            </li>
-            <li>
-              <a href="#reports">
-                <span className="nav-icon" aria-hidden="true">
-                  <FiFileText />
-                </span>
-                Reports
-              </a>
-            </li>
-          </ul>
-        </nav>
+        <div className="sidebar-brand">
+          <div className="logo-mark">O₂</div>
+          <div>
+            <p className="brand-sub">By009</p>
+            <strong>Oxygen Ops</strong>
+          </div>
+        </div>
+
+        <div className="sidebar-tabs" role="tablist">
+          <button className="tab active" type="button">
+            Favorites
+          </button>
+          <button className="tab" type="button">
+            Recently
+          </button>
+        </div>
+
+        <ul className="favorites-list">
+          {favoriteLinks.map((link) => (
+            <li key={link}>{link}</li>
+          ))}
+        </ul>
+
+        <div className="sidebar-menu">
+          {sidebarCollections.map((section) => (
+            <div key={section.title} className="sidebar-section">
+              <p className="sidebar-section-title">{section.title}</p>
+              <ul>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.label} className={item.active ? 'active' : ''}>
+                      <div className="nav-left">
+                        <Icon aria-hidden="true" />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && <span className="nav-badge">{item.badge}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="sidebar-footer">
+          <p className="footer-label">Senior Design</p>
+          <span>Powering medical data</span>
+        </div>
       </aside>
 
-      {/* Header */}
-      <header className="header">
-        <div className="system-status">
-          <div className={`status-indicator ${status.status}`}>
-            <span className={`status-dot ${status.status}`}></span>
-            System {status.status === 'optimal' ? 'Optimal' : status.status === 'warning' ? 'Warning' : 'Critical'}
-          </div>
-        </div>
-        <div className="alarm-count">
-          <FiBell aria-hidden="true" />
-          {unacknowledgedAlarms} Active Alarms
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="main-content">
-        <div className="status-strip">
-          <div className="status-pill warning">Warning</div>
-          <div className="status-pill neutral">Alarms: {unacknowledgedAlarms}</div>
-          <div className="status-pill neutral">Last Update: {lastUpdated}</div>
-        </div>
-
-        {/* KPI Cards */}
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <div className="kpi-label">Oxygen Purity</div>
-            <div className="kpi-value">
-              {status.purity}
-              <span className="kpi-unit">%</span>
+      <div className="workspace">
+        <div className="main-column">
+          <header className="status-bar">
+            <div className="status-left">
+              <span className="status-pill warn">Warning</span>
+              <span className="status-pill accent">Alarms: {unacknowledgedAlarms || 0}</span>
+              <span className="status-pill neutral">Last update {lastUpdated}</span>
             </div>
-            <div className="kpi-trend up">
-              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
-              Optimal range
-            </div>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-label">Flow Rate</div>
-            <div className="kpi-value">
-              {status.flowRate}
-              <span className="kpi-unit">L/min</span>
-            </div>
-            <div className="kpi-trend up">
-              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
-              Normal
-            </div>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-label">Pressure</div>
-            <div className="kpi-value">
-              {status.pressure}
-              <span className="kpi-unit">PSI</span>
-            </div>
-            <div className="kpi-trend up">
-              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
-              Stable
-            </div>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-label">Demand Coverage</div>
-            <div className="kpi-value">
-              {status.demandCoverage}
-              <span className="kpi-unit">%</span>
-            </div>
-            <div className="kpi-trend up">
-              <FiArrowUpRight className="trend-icon" aria-hidden="true" />
-              Sufficient
-            </div>
-          </div>
-        </div>
-
-        <div className="chart-grid">
-          <div className="chart-card large">
-            <div className="chart-header">
-              <div>
-                <p className="chart-label">Oxygen Purity vs Time</p>
-                <span className="chart-subtitle">Current week vs previous week</span>
+            <div className="status-right">
+              <div className="search-box">
+                <FiSearch aria-hidden="true" />
+                <input type="text" placeholder="Search" aria-label="Search modules" />
               </div>
+              <button className="icon-btn" aria-label="Toggle theme">
+                <FiSun />
+              </button>
+              <button className="icon-btn" aria-label="Notifications">
+                <FiBell />
+              </button>
             </div>
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatTimestamp}
-                  style={{ fontSize: '0.8rem' }}
-                  tickLine={false}
-                />
-                <YAxis style={{ fontSize: '0.8rem' }} tickLine={false} axisLine={false} />
-                <Tooltip labelFormatter={formatTimestamp} contentStyle={{ borderRadius: '8px', borderColor: '#e9ecef' }} />
-                <Legend />
-                <Line type="monotone" dataKey="purity" stroke="#51cf66" name="Purity (%)" strokeWidth={3} dot={false} />
-                <Line type="monotone" dataKey="flowRate" stroke="#339af0" name="Flow Rate" strokeWidth={3} strokeDasharray="5 5" dot={false} />
-                <Line type="monotone" dataKey="pressure" stroke="#ffa94d" name="Pressure" strokeWidth={2} dot={false} opacity={0.7} />
-              </LineChart>
-            </ResponsiveContainer>
+          </header>
+
+          <div className="today-row">
+            <div className="today-select">
+              Today
+              <FiChevronDown aria-hidden="true" />
+            </div>
+            <p className="sync-label">System overview</p>
           </div>
 
-          <div className="chart-card storage-card">
-            <div className="chart-header">
-              <div>
-                <p className="chart-label">Storage Level vs Time</p>
-                <span className="chart-subtitle">Weekly snapshot</span>
-              </div>
-            </div>
-            <ul className="storage-list">
-              {storageLevels.map((item) => (
-                <li key={item.day} className={`storage-item ${item.isToday ? 'active' : ''}`}>
-                  <span>{item.day}</span>
-                  <div className="storage-bar">
-                    <div className="storage-bar-fill" style={{ width: `${item.level}%` }}></div>
+          <section className="stat-grid">
+            {statCards.map((card) => {
+              const positive = !card.delta.startsWith('-');
+              return (
+                <article key={card.id} className={`metric-card ${card.tone}`}>
+                  <div className="metric-header">
+                    <button className="metric-link" type="button">
+                      {card.label}
+                    </button>
+                    <div className="metric-actions">
+                      <button
+                        className="icon-chip info"
+                        type="button"
+                        title={card.description}
+                        aria-label={`Info about ${card.label}`}
+                      >
+                        <FiInfo aria-hidden="true" />
+                      </button>
+                      <button
+                        className="icon-chip"
+                        type="button"
+                        aria-label={`View full details for ${card.label}`}
+                        onClick={() => openMetricDetails(card)}
+                      >
+                        <FiExternalLink aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <div className="metric-value-row">
+                    <span className="metric-value">{card.value}</span>
+                    <span className={`metric-trend ${positive ? 'up' : 'down'}`}>
+                      <FiArrowUpRight aria-hidden="true" />
+                      {card.delta}
+                    </span>
+                  </div>
+                  <p className="metric-caption">{card.helper}</p>
+                </article>
+              );
+            })}
+          </section>
+
+          <section className="panel-row primary">
+            <article className="panel large-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-title">Oxygen Purity vs Time</p>
+                  <span>Current vs previous week</span>
+                </div>
+                <div className="panel-controls">
+                  <div className="panel-tabs">
+                    <button className="active">Oxygen Purity</button>
+                    <button>Total Projects</button>
+                    <button>Operating Status</button>
+                  </div>
+                  <div className="panel-actions">
+                    <button
+                      className="icon-chip info"
+                      type="button"
+                      title={detailPayloads.purity?.description}
+                      aria-label="Info about Oxygen Purity vs Time"
+                    >
+                      <FiInfo aria-hidden="true" />
+                    </button>
+                    <button
+                      className="icon-chip"
+                      type="button"
+                      aria-label="Open detailed Oxygen Purity data"
+                      onClick={() => openChartDetails('purity')}
+                    >
+                      <FiExternalLink aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickFormatter={formatTimestamp}
+                    tickLine={false}
+                    axisLine={false}
+                    stroke="rgba(255,255,255,0.5)"
+                  />
+                  <YAxis tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.5)" />
+                  <Tooltip
+                    labelFormatter={formatTimestamp}
+                    contentStyle={{
+                      background: '#0b1329',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      color: '#fff'
+                    }}
+                  />
+                  <Legend wrapperStyle={{ color: '#cbd5ff' }} />
+                  <Line type="monotone" dataKey="purity" stroke="#7c6cfa" strokeWidth={3} dot={false} name="Purity %" />
+                  <Line type="monotone" dataKey="flowRate" stroke="#2dd4bf" strokeWidth={2} dot={false} name="Flow rate" />
+                  <Line type="monotone" dataKey="pressure" stroke="#f472b6" strokeWidth={2} dot={false} name="Pressure" />
+                </LineChart>
+              </ResponsiveContainer>
+            </article>
+
+            <article className="panel storage-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-title">Storage Level vs Time</p>
+                  <span>Last month vs this month</span>
+                </div>
+                <div className="panel-controls">
+                  <div className="panel-actions">
+                    <button
+                      className="icon-chip info"
+                      type="button"
+                      title={detailPayloads.storage?.description}
+                      aria-label="Info about Storage Level vs Time"
+                    >
+                      <FiInfo aria-hidden="true" />
+                    </button>
+                    <button
+                      className="icon-chip"
+                      type="button"
+                      aria-label="Open detailed storage data"
+                      onClick={() => openChartDetails('storage')}
+                    >
+                      <FiExternalLink aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={storageLevels}>
+                  <defs>
+                    <linearGradient id="storagePrev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.5} />
+                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="storageCurrent" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.5)" />
+                  <YAxis hide domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{
+                      background: '#0b1329',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      color: '#fff'
+                    }}
+                  />
+                  <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ color: '#cbd5ff' }} />
+                  <Area type="monotone" dataKey="lastMonth" stroke="#60a5fa" fill="url(#storagePrev)" name="Last Month" />
+                  <Area type="monotone" dataKey="thisMonth" stroke="#a855f7" fill="url(#storageCurrent)" name="This Month" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </article>
+          </section>
+
+          <section className="panel-row">
+            <article className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-title">Flow Rate vs Time</p>
+                  <span>Live patient usage</span>
+                </div>
+                <div className="panel-controls">
+                  <div className="panel-actions">
+                    <button
+                      className="icon-chip info"
+                      type="button"
+                      title={detailPayloads.flow?.description}
+                      aria-label="Info about Flow Rate vs Time"
+                    >
+                      <FiInfo aria-hidden="true" />
+                    </button>
+                    <button
+                      className="icon-chip"
+                      type="button"
+                      aria-label="Open detailed flow rate data"
+                      onClick={() => openChartDetails('flow')}
+                    >
+                      <FiExternalLink aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickFormatter={formatTimestamp}
+                    tickLine={false}
+                    axisLine={false}
+                    stroke="rgba(255,255,255,0.5)"
+                  />
+                  <YAxis tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.5)" />
+                  <Tooltip
+                    labelFormatter={formatTimestamp}
+                    contentStyle={{
+                      background: '#0b1329',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      color: '#fff'
+                    }}
+                  />
+                  <Line type="monotone" dataKey="flowRate" stroke="#fb7185" strokeWidth={2} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            </article>
+
+            <article className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-title">Pressure vs Time</p>
+                  <span>Distribution manifold</span>
+                </div>
+                <div className="panel-controls">
+                  <div className="panel-actions">
+                    <button
+                      className="icon-chip info"
+                      type="button"
+                      title={detailPayloads.pressure?.description}
+                      aria-label="Info about Pressure vs Time"
+                    >
+                      <FiInfo aria-hidden="true" />
+                    </button>
+                    <button
+                      className="icon-chip"
+                      type="button"
+                      aria-label="Open detailed pressure data"
+                      onClick={() => openChartDetails('pressure')}
+                    >
+                      <FiExternalLink aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickFormatter={formatTimestamp}
+                    tickLine={false}
+                    axisLine={false}
+                    stroke="rgba(255,255,255,0.5)"
+                  />
+                  <YAxis tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.5)" />
+                  <Tooltip
+                    labelFormatter={formatTimestamp}
+                    contentStyle={{
+                      background: '#0b1329',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      color: '#fff'
+                    }}
+                  />
+                  <Line type="monotone" dataKey="pressure" stroke="#38bdf8" strokeWidth={2} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            </article>
+          </section>
         </div>
 
-        <div className="chart-row">
-          <div className="chart-card">
-            <div className="chart-header">
-              <div>
-                <p className="chart-label">Flow Rate vs Time</p>
-                <span className="chart-subtitle">Departmental distribution</span>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={flowBreakdown}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f3f5" />
-                <XAxis dataKey="department" tickLine={false} axisLine={false} style={{ fontSize: '0.8rem' }} />
-                <YAxis tickLine={false} axisLine={false} style={{ fontSize: '0.8rem' }} />
-                <Tooltip cursor={{ fill: 'rgba(76, 110, 245, 0.1)' }} />
-                <Bar dataKey="value" fill="#748ffc" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="chart-card">
-            <div className="chart-header">
-              <div>
-                <p className="chart-label">Pressure vs Time</p>
-                <span className="chart-subtitle">Asset contribution</span>
-              </div>
-            </div>
-            <div className="pie-wrapper">
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie data={pressureBreakdown} dataKey="value" innerRadius={60} outerRadius={90} paddingAngle={4}>
-                    {pressureBreakdown.map((entry, index) => (
-                      <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <ul className="pie-legend">
-                {pressureBreakdown.map((entry, index) => (
-                  <li key={entry.name}>
-                    <span className="legend-dot" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></span>
-                    {entry.name}
-                    <strong>{entry.value.toFixed(1)}%</strong>
+        <aside className="right-rail">
+          <section className="right-card">
+            <h4>Alarm & Alert</h4>
+            {alarms.length === 0 ? (
+              <p className="empty-state">All systems stable.</p>
+            ) : (
+              <ul className="alarm-list">
+                {alarms.map((alarm) => (
+                  <li key={alarm.id}>
+                    <div>
+                      <p>{alarm.message}</p>
+                      <span>{formatTimeAgo(alarm.timestamp)}</span>
+                    </div>
+                    <span className={`badge ${alarm.severity}`}>{alarm.severity}</span>
                   </li>
                 ))}
               </ul>
-            </div>
-          </div>
-        </div>
+            )}
+          </section>
 
-        {/* Predictions Chart */}
-        {predictions.length > 0 && (
-          <div className="chart-card">
-            <div className="chart-header">
-              <div>
-                <p className="chart-label">Predicted Demand (Next 50 minutes)</p>
-                <span className="chart-subtitle">5-minute intervals</span>
+          {backup && (
+            <section className="right-card">
+              <h4>Backup Oxygen Status</h4>
+              <div className="right-grid">
+                <div>
+                  <p>Mode</p>
+                  <strong>{backup.mode.toUpperCase()}</strong>
+                </div>
+                <div>
+                  <p>Level</p>
+                  <strong>{backup.level.toFixed(1)}%</strong>
+                </div>
+                <div>
+                  <p>Coverage</p>
+                  <strong>{backup.remainingHours.toFixed(1)} h</strong>
+                </div>
+                <div>
+                  <p>Last checked</p>
+                  <strong>{formatTimeAgo(backup.lastChecked)}</strong>
+                </div>
               </div>
-            </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={predictions}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f3f5" />
-                <XAxis dataKey="timestamp" tickFormatter={formatTimestamp} style={{ fontSize: '0.8rem' }} tickLine={false} />
-                <YAxis style={{ fontSize: '0.8rem' }} tickLine={false} axisLine={false} />
-                <Tooltip labelFormatter={formatTimestamp} />
-                <Line type="monotone" dataKey="predictedDemand" stroke="#845ef7" strokeWidth={3} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </main>
-
-      {/* Right Panel */}
-      <aside className="right-panel">
-        {/* Alarms Section */}
-        <div className="panel-section">
-          <h3 className="panel-title">Active Alarms & Alerts</h3>
-          {alarms.length === 0 ? (
-            <p style={{ color: '#6c757d', fontSize: '0.9rem' }}>No active alarms</p>
-          ) : (
-            <ul className="alarm-list">
-              {alarms.map((alarm) => (
-                <li key={alarm.id} className={`alarm-item ${alarm.severity}`}>
-                  <div className="alarm-severity" style={{
-                    color: alarm.severity === 'critical' ? '#dc3545' : 
-                           alarm.severity === 'warning' ? '#ffc107' : '#17a2b8'
-                  }}>
-                    {alarm.severity}
-                  </div>
-                  <div className="alarm-message">{alarm.message}</div>
-                  <div className="alarm-time">{formatTimeAgo(alarm.timestamp)}</div>
-                </li>
-              ))}
-            </ul>
+            </section>
           )}
-        </div>
 
-        {/* Backup Oxygen Status */}
-        {backup && (
-          <div className="panel-section">
-            <h3 className="panel-title">Backup Oxygen Status</h3>
-            <div className="backup-info">
-              <div className="backup-item">
-                <span className="backup-label">Mode</span>
-                <span className={`backup-mode ${backup.mode}`}>
-                  {backup.mode.toUpperCase()}
-                </span>
-              </div>
-              <div className="backup-item">
-                <span className="backup-label">Level</span>
-                <span className="backup-level">{backup.level.toFixed(1)}%</span>
-              </div>
-              <div className="backup-item">
-                <span className="backup-label">Remaining</span>
-                <span className="backup-value">{backup.remainingHours.toFixed(1)} hrs</span>
-              </div>
-              <div className="backup-item">
-                <span className="backup-label">Last Checked</span>
-                <span className="backup-value">{formatTimeAgo(backup.lastChecked)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {supplyDemand && (
-          <div className="panel-section">
-            <h3 className="panel-title">Demand vs Supply</h3>
-            <div className="supply-demand">
-              <div className="supply-row">
+          {supplyDemand && (
+            <section className="right-card demand">
+              <h4>Demand vs Supply</h4>
+              <div className="demand-row">
                 <span>Current Demand</span>
                 <strong>{supplyDemand.currentDemand} m³/h</strong>
               </div>
-              <div className="supply-row">
+              <div className="demand-row">
                 <span>Current Supply</span>
                 <strong>{supplyDemand.currentSupply} m³/h</strong>
               </div>
-              <div className={`supply-status ${supplyIsHealthy ? 'good' : 'bad'}`}>
-                Status: {supplyDemand.status}
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${supplyFill}%` }}></div>
               </div>
-              <p className="supply-forecast">Forecast: {supplyDemand.forecast}</p>
-            </div>
-          </div>
-        )}
-      </aside>
+              <p className={`status-note ${supplyIsHealthy ? 'healthy' : 'risk'}`}>
+                {supplyDemand.status}
+              </p>
+              <p className="forecast-copy">{supplyDemand.forecast}</p>
+            </section>
+          )}
+        </aside>
+      </div>
     </div>
+      {detailView && (
+        <div
+          className="detail-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeDetails}
+        >
+          <div className="detail-modal" role="document" onClick={(event) => event.stopPropagation()}>
+            <div className="detail-modal-header">
+              <div>
+                <p className="detail-modal-label">Detail preview</p>
+                <h3>{detailView.title}</h3>
+              </div>
+              <button className="icon-chip" type="button" aria-label="Close detail" onClick={closeDetails}>
+                <FiX aria-hidden="true" />
+              </button>
+            </div>
+            {detailView.description && <p className="detail-description">{detailView.description}</p>}
+            {detailView.meta && (
+              <dl className="detail-meta-grid">
+                {detailView.meta.map((item) => (
+                  <div key={item.label}>
+                    <dt>{item.label}</dt>
+                    <dd>{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {detailView.dataset && detailView.dataset.length > 0 && (
+              <div className="detail-data-preview">
+                <p className="detail-modal-label">Recent data preview</p>
+                <pre>{JSON.stringify(detailView.dataset, null, 2)}</pre>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
