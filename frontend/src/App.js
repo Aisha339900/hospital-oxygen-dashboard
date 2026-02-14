@@ -126,6 +126,16 @@ const DEFAULT_SETTINGS = {
   emailAlerts: true
 };
 
+const DEFAULT_LOG_ASSET_PATH = `${process.env.PUBLIC_URL || ''}/data-results.pdf`;
+const DEFAULT_LOG_METADATA = {
+  name: 'Data Results.pdf',
+  size: 128959,
+  type: 'application/pdf',
+  lastModified: 1771072671000
+};
+
+const isBlobUrl = (url) => typeof url === 'string' && url.startsWith('blob:');
+
 function App() {
   const [status, setStatus] = useState(null);
   const [data, setData] = useState([]);
@@ -140,8 +150,8 @@ function App() {
   const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
   const [backupPanelPulse, setBackupPanelPulse] = useState(false);
   const [demandPanelPulse, setDemandPanelPulse] = useState(false);
-  const [logUpload, setLogUpload] = useState(null);
-  const [logPreviewUrl, setLogPreviewUrl] = useState('');
+  const [logUpload, setLogUpload] = useState(() => ({ ...DEFAULT_LOG_METADATA }));
+  const [logPreviewUrl, setLogPreviewUrl] = useState(DEFAULT_LOG_ASSET_PATH);
   const [settings, setSettings] = useState({ ...DEFAULT_SETTINGS });
   const alarmPulseTimeoutRef = useRef(null);
   const backupPulseTimeoutRef = useRef(null);
@@ -180,7 +190,7 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (logPreviewUrl) {
+      if (isBlobUrl(logPreviewUrl)) {
         URL.revokeObjectURL(logPreviewUrl);
       }
     };
@@ -223,7 +233,7 @@ function App() {
     if (!file) {
       return;
     }
-    if (logPreviewUrl) {
+    if (isBlobUrl(logPreviewUrl)) {
       URL.revokeObjectURL(logPreviewUrl);
     }
     const nextUrl = URL.createObjectURL(file);
