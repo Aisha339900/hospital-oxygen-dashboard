@@ -29,7 +29,13 @@ function DashboardPage({
   backupPanelPulse,
   demandPanelPulse,
   unacknowledgedAlarms,
-  lastUpdated
+  lastUpdated,
+  streamOptions,
+  activeStream,
+  onStreamChange,
+  currentStreamProfile,
+  currentStreamLabel,
+  currentStreamProcess
 }) {
   return (
     <>
@@ -38,9 +44,17 @@ function DashboardPage({
           isTrendsView={isTrendsView}
           unacknowledgedAlarms={unacknowledgedAlarms}
           lastUpdated={lastUpdated}
+          currentStreamLabel={currentStreamLabel}
         />
 
-        <TodayRow isTrendsView={isTrendsView} />
+        <TodayRow
+          isTrendsView={isTrendsView}
+          streamOptions={streamOptions}
+          activeStream={activeStream}
+          onStreamChange={onStreamChange}
+          currentStreamProfile={currentStreamProfile}
+          currentStreamProcess={currentStreamProcess}
+        />
 
         <StatGrid statCards={statCards} isTrendsView={isTrendsView} openMetricDetails={openMetricDetails} />
 

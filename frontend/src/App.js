@@ -17,19 +17,155 @@ import SettingsPage from './pages/SettingsPage';
 import DetailModal from './components/DetailModal';
 import './App.css';
 
+const STREAM_CONFIG = {
+  feed: {
+    id: 'feed',
+    label: 'Feed',
+    code: '1',
+    composition: { o2: 0.21, n2: 0.78, ar: 0.01 },
+    flowBaseline: 72,
+    flowVariance: 6,
+    pressureBaseline: 44,
+    pressureVariance: 4,
+    demandCoverageBaseline: 62,
+    demandVariance: 8,
+    demandBaseline: 54,
+    supplyVariance: 6,
+    storageBaseline: 42,
+    storageVariance: 6,
+    backupBaseline: 58,
+    backupVariance: 10,
+    purityVariance: 1.2
+  },
+  membraneFeed: {
+    id: 'membraneFeed',
+    label: 'Membrane Feed',
+    code: '3',
+    composition: { o2: 0.21, n2: 0.78, ar: 0.01 },
+    flowBaseline: 68,
+    flowVariance: 6,
+    pressureBaseline: 46,
+    pressureVariance: 5,
+    demandCoverageBaseline: 65,
+    demandVariance: 7,
+    demandBaseline: 56,
+    supplyVariance: 6,
+    storageBaseline: 44,
+    storageVariance: 5,
+    backupBaseline: 60,
+    backupVariance: 9,
+    purityVariance: 1
+  },
+  membranePermeate: {
+    id: 'membranePermeate',
+    label: 'Membrane Permeate',
+    code: '5',
+    composition: { o2: 0.4239, n2: 0.5725, ar: 0.0037 },
+    flowBaseline: 58,
+    flowVariance: 7,
+    pressureBaseline: 40,
+    pressureVariance: 5,
+    demandCoverageBaseline: 72,
+    demandVariance: 6,
+    demandBaseline: 52,
+    supplyVariance: 5,
+    storageBaseline: 48,
+    storageVariance: 6,
+    backupBaseline: 66,
+    backupVariance: 8,
+    purityVariance: 1.6
+  },
+  membraneRetentate: {
+    id: 'membraneRetentate',
+    label: 'Membrane Retentate',
+    code: '6',
+    composition: { o2: 0.1299, n2: 0.8577, ar: 0.0124 },
+    flowBaseline: 65,
+    flowVariance: 8,
+    pressureBaseline: 52,
+    pressureVariance: 6,
+    demandCoverageBaseline: 54,
+    demandVariance: 9,
+    demandBaseline: 58,
+    supplyVariance: 7,
+    storageBaseline: 38,
+    storageVariance: 7,
+    backupBaseline: 52,
+    backupVariance: 10,
+    purityVariance: 1.1
+  },
+  psaProduct: {
+    id: 'psaProduct',
+    label: 'PSA Product',
+    code: '7',
+    composition: { o2: 0.9332, n2: 0.0663, ar: 0.0004 },
+    flowBaseline: 58,
+    flowVariance: 5,
+    pressureBaseline: 50,
+    pressureVariance: 4,
+    demandCoverageBaseline: 95,
+    demandVariance: 4,
+    demandBaseline: 48,
+    supplyVariance: 4,
+    storageBaseline: 62,
+    storageVariance: 5,
+    backupBaseline: 78,
+    backupVariance: 6,
+    purityVariance: 1
+  },
+  psaOffGas: {
+    id: 'psaOffGas',
+    label: 'PSA Off-Gas',
+    code: '8',
+    composition: { o2: 0.0373, n2: 0.9566, ar: 0.0061 },
+    flowBaseline: 42,
+    flowVariance: 6,
+    pressureBaseline: 32,
+    pressureVariance: 4,
+    demandCoverageBaseline: 48,
+    demandVariance: 8,
+    demandBaseline: 60,
+    supplyVariance: 7,
+    storageBaseline: 34,
+    storageVariance: 6,
+    backupBaseline: 46,
+    backupVariance: 11,
+    purityVariance: 0.8
+  }
+};
+
+const STREAM_OPTIONS = Object.values(STREAM_CONFIG);
+
+const STREAM_PROCESS_SUMMARIES = {
+  feed: { temperature: 25, pressure: 100, molarFlow: 17, massFlow: 492.5 },
+  membraneFeed: { temperature: 25, pressure: 600, molarFlow: 17, massFlow: 492.5 },
+  membranePermeate: { temperature: 25, pressure: 100, molarFlow: 4.633, massFlow: 137.8 },
+  membraneRetentate: { temperature: 24.46, pressure: 600, molarFlow: 12.37, massFlow: 354.7 },
+  psaProduct: { temperature: 25, pressure: 100, molarFlow: 1.999, massFlow: 63.44 },
+  psaOffGas: { temperature: 25, pressure: 101, molarFlow: 2.634, massFlow: 74.36 }
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const withJitter = (base, variance = 0) => base + (Math.random() - 0.5) * variance * 2;
+
 // Local simulation helpers mimic the historical backend endpoints so the UI stays interactive.
-const generateSimulatedData = () => {
+const generateSimulatedData = (profile) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const purityBaseline = profile?.purityBaseline ?? (profile?.composition?.o2 || 0) * 100;
   return Array.from({ length: 14 }, (_, index) => {
     const day = new Date(today);
     day.setDate(today.getDate() - (13 - index));
     return {
       timestamp: day.getTime(),
-      purity: 94 + Math.random() * 5,
-      flowRate: 48 + Math.random() * 22,
-      pressure: 44 + Math.random() * 11,
-      demandCoverage: 82 + Math.random() * 16
+      purity: clamp(withJitter(purityBaseline, profile?.purityVariance ?? 1), 0, 100),
+      flowRate: clamp(withJitter(profile?.flowBaseline ?? 55, profile?.flowVariance ?? 6), 0, 120),
+      pressure: clamp(withJitter(profile?.pressureBaseline ?? 45, profile?.pressureVariance ?? 5), 0, 80),
+      demandCoverage: clamp(
+        withJitter(profile?.demandCoverageBaseline ?? 80, profile?.demandVariance ?? 6),
+        0,
+        140
+      )
     };
   });
 };
@@ -95,25 +231,38 @@ const generateAlarms = () => {
   return alarms;
 };
 
-const generateBackupStatus = () => ({
-  mode: Math.random() > 0.5 ? 'standby' : 'active',
-  level: 70 + Math.random() * 30,
-  remainingHours: 24 + Math.random() * 24,
+const generateBackupStatus = (profile) => ({
+  mode: profile?.demandCoverageBaseline > 80 ? 'active' : Math.random() > 0.5 ? 'standby' : 'active',
+  level: clamp(withJitter(profile?.backupBaseline ?? 60, profile?.backupVariance ?? 8), 10, 100),
+  remainingHours: clamp(withJitter(24 + (profile?.backupBaseline ?? 60) / 2, 6), 6, 72),
   lastChecked: Date.now() - 3600000
 });
 
-const generateStorageLevels = () => {
+const generateStorageLevels = (profile) => {
   const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
   return labels.map((label) => ({
     label,
-    lastMonth: 35 + Math.random() * 25,
-    thisMonth: 40 + Math.random() * 35
+    lastMonth: clamp(
+      withJitter((profile?.storageBaseline ?? 45) + Math.random() * 5, profile?.storageVariance ?? 5),
+      0,
+      100
+    ),
+    thisMonth: clamp(
+      withJitter((profile?.storageBaseline ?? 45) + 6 + Math.random() * 6, profile?.storageVariance ?? 5),
+      0,
+      100
+    )
   }));
 };
 
-const generateSupplyDemand = () => {
-  const demand = 50 + Math.random() * 10;
-  const supply = demand + (Math.random() * 6 - 3);
+const generateSupplyDemand = (profile) => {
+  const demand = clamp(withJitter(profile?.demandBaseline ?? 50, profile?.demandVariance ?? 6), 10, 120);
+  const coverage = clamp(
+    withJitter(profile?.demandCoverageBaseline ?? 80, profile?.demandVariance ?? 6),
+    10,
+    140
+  );
+  const supply = clamp((demand * coverage) / 100 + withJitter(0, profile?.supplyVariance ?? 4), 10, 140);
   return {
     currentDemand: demand.toFixed(1),
     currentSupply: supply.toFixed(1),
@@ -145,6 +294,7 @@ function App() {
   const [error, setError] = useState(null);
   const [storageLevels, setStorageLevels] = useState([]);
   const [supplyDemand, setSupplyDemand] = useState(null);
+  const [activeStream, setActiveStream] = useState(STREAM_OPTIONS[0]?.id || '');
   const [detailView, setDetailView] = useState(null);
   const [activeView, setActiveView] = useState('Default');
   const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
@@ -157,26 +307,32 @@ function App() {
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
 
-  const fetchData = useCallback(() => {
+  const refreshStreamData = useCallback((streamId) => {
     try {
-      const simulatedData = generateSimulatedData();
+      const profile = STREAM_CONFIG[streamId] || STREAM_OPTIONS[0];
+      if (!profile) {
+        throw new Error('No stream profiles configured');
+      }
+      const simulatedData = generateSimulatedData(profile);
       setData(simulatedData);
       setStatus(createStatusSnapshot(simulatedData));
       setAlarms(generateAlarms());
-      setBackup(generateBackupStatus());
-      setStorageLevels(generateStorageLevels());
-      setSupplyDemand(generateSupplyDemand());
+      setBackup(generateBackupStatus(profile));
+      setStorageLevels(generateStorageLevels(profile));
+      setSupplyDemand(generateSupplyDemand(profile));
       setLoading(false);
       setError(null);
     } catch (err) {
-      setError('Failed to generate simulated data');
+      setError(err?.message || 'Failed to generate simulated data');
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (activeStream) {
+      refreshStreamData(activeStream);
+    }
+  }, [refreshStreamData, activeStream]);
 
   useEffect(() => {
     return () => {
@@ -260,6 +416,9 @@ function App() {
     return <div className="error">{error}</div>;
   }
 
+  const streamOptions = STREAM_OPTIONS;
+  const currentStreamProfile = STREAM_CONFIG[activeStream] || streamOptions[0];
+  const currentStreamProcess = STREAM_PROCESS_SUMMARIES[currentStreamProfile?.id] || null;
   const latestPoint = data[data.length - 1];
   const earliestPoint = data[0];
   const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
@@ -479,6 +638,12 @@ function App() {
       handler();
     }
   };
+  const handleStreamChange = (nextStreamId) => {
+    if (!nextStreamId) {
+      return;
+    }
+    setActiveStream(nextStreamId);
+  };
   const isTrendsView = activeView === 'Trends';
   const isLogsView = activeView === 'Logs';
   const isSettingsView = activeView === 'Settings';
@@ -535,6 +700,12 @@ function App() {
               demandPanelPulse={demandPanelPulse}
               unacknowledgedAlarms={unacknowledgedAlarms}
               lastUpdated={lastUpdated}
+              streamOptions={streamOptions}
+              activeStream={activeStream}
+              onStreamChange={handleStreamChange}
+              currentStreamProfile={currentStreamProfile}
+              currentStreamLabel={currentStreamProfile?.label || '-'}
+              currentStreamProcess={currentStreamProcess}
             />
           )}
         </div>
