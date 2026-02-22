@@ -2,13 +2,19 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { FiInfo, FiExternalLink } from 'react-icons/fi';
 
-function PurityOverviewPanel({ data, formatTimestamp, detailPayload, onOpenDetails }) {
+function PurityOverviewPanel({ data, formatTimestamp, detailPayload, onOpenDetails, chartConfig = {} }) {
+  const title = chartConfig.panelTitle || 'Daily Oxygen Purity';
+  const subtitle = chartConfig.panelSubtitle || 'Last 14 days';
+  const infoLabel = chartConfig.infoLabel || 'Info about daily oxygen purity';
+  const openLabel = chartConfig.openLabel || 'Open detailed daily purity data';
+  const description = chartConfig.detailDescription || detailPayload?.description;
+  const chartId = chartConfig.id || 'purity';
   return (
     <article className="panel large-panel">
       <div className="panel-header">
         <div>
-          <p className="panel-title">Daily Oxygen Purity</p>
-          <span>Last 14 days</span>
+          <p className="panel-title">{title}</p>
+          <span>{subtitle}</span>
         </div>
         <div className="panel-controls">
           <div className="panel-tabs">
@@ -20,16 +26,16 @@ function PurityOverviewPanel({ data, formatTimestamp, detailPayload, onOpenDetai
             <button
               className="icon-chip info"
               type="button"
-              title={detailPayload?.description}
-              aria-label="Info about daily oxygen purity"
+              title={description}
+              aria-label={infoLabel}
             >
               <FiInfo aria-hidden="true" />
             </button>
             <button
               className="icon-chip"
               type="button"
-              aria-label="Open detailed daily purity data"
-              onClick={() => onOpenDetails('purity')}
+              aria-label={openLabel}
+              onClick={() => onOpenDetails(chartId)}
             >
               <FiExternalLink aria-hidden="true" />
             </button>

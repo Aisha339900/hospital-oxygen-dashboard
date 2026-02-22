@@ -29,7 +29,14 @@ function DashboardPage({
   backupPanelPulse,
   demandPanelPulse,
   unacknowledgedAlarms,
-  lastUpdated
+  lastUpdated,
+  streamOptions,
+  activeStream,
+  onStreamChange,
+  currentStreamProfile,
+  currentStreamLabel,
+  currentStreamProcess,
+  trendChartConfig = {}
 }) {
   return (
     <>
@@ -38,9 +45,17 @@ function DashboardPage({
           isTrendsView={isTrendsView}
           unacknowledgedAlarms={unacknowledgedAlarms}
           lastUpdated={lastUpdated}
+          currentStreamLabel={currentStreamLabel}
         />
 
-        <TodayRow isTrendsView={isTrendsView} />
+        <TodayRow
+          isTrendsView={isTrendsView}
+          streamOptions={streamOptions}
+          activeStream={activeStream}
+          onStreamChange={onStreamChange}
+          currentStreamProfile={currentStreamProfile}
+          currentStreamProcess={currentStreamProcess}
+        />
 
         <StatGrid statCards={statCards} isTrendsView={isTrendsView} openMetricDetails={openMetricDetails} />
 
@@ -50,11 +65,13 @@ function DashboardPage({
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.purity}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.purity}
           />
           <StorageComparisonPanel
             storageLevels={storageLevels}
             detailPayload={detailPayloads.storage}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.storage}
           />
         </section>
 
@@ -64,12 +81,14 @@ function DashboardPage({
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.flow}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.flow}
           />
           <PressureTrendPanel
             data={data}
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.pressure}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.pressure}
           />
         </section>
       </div>

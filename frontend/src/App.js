@@ -15,112 +15,88 @@ import DashboardPage from './pages/DashboardPage';
 import LogsPage from './pages/LogsPage';
 import SettingsPage from './pages/SettingsPage';
 import DetailModal from './components/DetailModal';
+import KPI_DEFINITIONS from './Data/KPIs_data.js';
+import TREND_CHARTS from './Data/trend_charts_data.js';
+import STREAM_PRESETS from './Data/StreamPresets_data.js';
+import STREAM_COMPOSITIONS from './Data/Compositions_data.js';
+import STREAM_CONTROLS from './Data/stream_controls_data.js';
+import {
+  generateTrendSeries,
+  generateStreamStatus,
+  generateStorageComparison,
+  generateBackupPanelData,
+  generateAlarmPanelData,
+  generateDemandPanelSnapshot
+} from './Data/generators.js';
 import './App.css';
 
-// Local simulation helpers mimic the historical backend endpoints so the UI stays interactive.
-const generateSimulatedData = () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Array.from({ length: 14 }, (_, index) => {
-    const day = new Date(today);
-    day.setDate(today.getDate() - (13 - index));
-    return {
-      timestamp: day.getTime(),
-      purity: 94 + Math.random() * 5,
-      flowRate: 48 + Math.random() * 22,
-      pressure: 44 + Math.random() * 11,
-      demandCoverage: 82 + Math.random() * 16
-    };
-  });
+const mapByStreamCode = (collection) => {
+  if (!Array.isArray(collection)) {
+    return {};
+  }
+  return collection.reduce((acc, entry) => {
+    const code = entry?.stream !== undefined ? String(entry.stream) : null;
+    if (code) {
+      acc[code] = entry;
+    }
+    return acc;
+  }, {});
 };
 
-const createStatusSnapshot = (dataPoints) => {
-  const latest = dataPoints[dataPoints.length - 1];
-  if (!latest) {
-    const now = Date.now();
-    return {
-      status: 'warning',
-      purity: '0.00',
-      flowRate: '0.00',
-      pressure: '0.00',
-      demandCoverage: '0.00',
-      timestamp: now
-    };
-  }
+const STREAM_COMPOSITION_MAP = mapByStreamCode(STREAM_COMPOSITIONS);
+const STREAM_CONTROL_MAP = mapByStreamCode(STREAM_CONTROLS);
 
-  return {
-    status: latest.purity > 96 && latest.pressure > 48 ? 'optimal' : 'warning',
-    purity: latest.purity.toFixed(2),
-    flowRate: latest.flowRate.toFixed(2),
-    pressure: latest.pressure.toFixed(2),
-    demandCoverage: latest.demandCoverage.toFixed(2),
-    timestamp: latest.timestamp
-  };
-};
-
-const generateAlarms = () => {
-  const alarms = [];
-  const now = Date.now();
-
-  if (Math.random() > 0.6) {
-    alarms.push({
-      id: 1,
-      severity: 'warning',
-      message: 'Oxygen purity below optimal level',
-      timestamp: now - 300000,
-      acknowledged: false
-    });
-  }
-
-  if (Math.random() > 0.7) {
-    alarms.push({
-      id: 2,
-      severity: 'critical',
-      message: 'Pressure fluctuation detected',
-      timestamp: now - 180000,
-      acknowledged: false
-    });
-  }
-
-  if (Math.random() > 0.8) {
-    alarms.push({
-      id: 3,
-      severity: 'info',
-      message: 'Routine maintenance scheduled',
-      timestamp: now - 600000,
-      acknowledged: true
-    });
-  }
-
-  return alarms;
-};
-
-const generateBackupStatus = () => ({
-  mode: Math.random() > 0.5 ? 'standby' : 'active',
-  level: 70 + Math.random() * 30,
-  remainingHours: 24 + Math.random() * 24,
-  lastChecked: Date.now() - 3600000
+const normalizeComposition = (entry) => ({
+  o2: entry?.o2 ?? 0,
+  n2: entry?.n2 ?? 0,
+  ar: entry?.ar ?? 0,
+  label: entry?.label
 });
 
-const generateStorageLevels = () => {
-  const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
-  return labels.map((label) => ({
-    label,
-    lastMonth: 35 + Math.random() * 25,
-    thisMonth: 40 + Math.random() * 35
-  }));
-};
-
-const generateSupplyDemand = () => {
-  const demand = 50 + Math.random() * 10;
-  const supply = demand + (Math.random() * 6 - 3);
+const normalizeProcess = (entry) => {
+  if (!entry) {
+    return null;
+  }
   return {
-    currentDemand: demand.toFixed(1),
-    currentSupply: supply.toFixed(1),
-    status: supply >= demand ? 'Supply meets demand' : 'Supply below demand',
-    forecast: supply >= demand ? 'No supply risk detected' : 'Monitor supply closely'
+    temperature: entry.temperatureC,
+    pressure: entry.pressureKPa,
+    molarFlow: entry.molarFlowKmolPerHr,
+    massFlow: entry.massFlowKgPerHr,
+    description: entry.description
   };
 };
+
+const STREAM_PROFILES = Object.fromEntries(
+  Object.entries(STREAM_PRESETS).map(([key, preset]) => {
+    const compositionEntry = STREAM_COMPOSITION_MAP[preset.code];
+    const processEntry = STREAM_CONTROL_MAP[preset.code];
+    const normalizedComposition = normalizeComposition(compositionEntry || {});
+    return [
+      key,
+      {
+        ...preset,
+        label: normalizedComposition.label || preset.label || preset.id,
+        composition: {
+          o2: normalizedComposition.o2,
+          n2: normalizedComposition.n2,
+          ar: normalizedComposition.ar
+        },
+        process: normalizeProcess(processEntry)
+      }
+    ];
+  })
+);
+
+const STREAM_OPTIONS = Object.values(STREAM_PROFILES);
+
+const KPI_ICON_MAP = {
+  droplet: FiDroplet,
+  layers: FiLayers,
+  target: FiTarget,
+  trendingUp: FiTrendingUp
+};
+
+// Generator helpers now live in /Data to keep App lean.
 
 const DEFAULT_SETTINGS = {
   emailAlerts: true
@@ -145,6 +121,7 @@ function App() {
   const [error, setError] = useState(null);
   const [storageLevels, setStorageLevels] = useState([]);
   const [supplyDemand, setSupplyDemand] = useState(null);
+  const [activeStream, setActiveStream] = useState(STREAM_OPTIONS[0]?.id || '');
   const [detailView, setDetailView] = useState(null);
   const [activeView, setActiveView] = useState('Default');
   const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
@@ -157,26 +134,32 @@ function App() {
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
 
-  const fetchData = useCallback(() => {
+  const refreshStreamData = useCallback((streamId) => {
     try {
-      const simulatedData = generateSimulatedData();
-      setData(simulatedData);
-      setStatus(createStatusSnapshot(simulatedData));
-      setAlarms(generateAlarms());
-      setBackup(generateBackupStatus());
-      setStorageLevels(generateStorageLevels());
-      setSupplyDemand(generateSupplyDemand());
+      const profile = STREAM_PROFILES[streamId] || STREAM_OPTIONS[0];
+      if (!profile) {
+        throw new Error('No stream profiles configured');
+      }
+      const trendSeries = generateTrendSeries(profile);
+      setData(trendSeries);
+      setStatus(generateStreamStatus(trendSeries));
+      setAlarms(generateAlarmPanelData());
+      setBackup(generateBackupPanelData(profile));
+      setStorageLevels(generateStorageComparison(profile));
+      setSupplyDemand(generateDemandPanelSnapshot(streamId));
       setLoading(false);
       setError(null);
     } catch (err) {
-      setError('Failed to generate simulated data');
+      setError(err?.message || 'Failed to generate simulated data');
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (activeStream) {
+      refreshStreamData(activeStream);
+    }
+  }, [refreshStreamData, activeStream]);
 
   useEffect(() => {
     return () => {
@@ -260,6 +243,9 @@ function App() {
     return <div className="error">{error}</div>;
   }
 
+  const streamOptions = STREAM_OPTIONS;
+  const currentStreamProfile = STREAM_PROFILES[activeStream] || streamOptions[0];
+  const currentStreamProcess = currentStreamProfile?.process || null;
   const latestPoint = data[data.length - 1];
   const earliestPoint = data[0];
   const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
@@ -290,10 +276,78 @@ function App() {
     return `${sign}${formatted}${suffix}`;
   };
 
+  const metricValue = (key, suffix = '') => {
+    if (!key || !status) {
+      return `0${suffix}`;
+    }
+    const reading = status[key];
+    if (reading === undefined || reading === null || reading === '') {
+      return `0${suffix}`;
+    }
+    return `${reading}${suffix}`;
+  };
+
   const previewData = (rows, limit = 6) => {
     if (!rows || rows.length === 0) return [];
     const start = Math.max(rows.length - limit, 0);
     return rows.slice(start);
+  };
+
+  const resolveMetaValue = (source) => {
+    switch (source) {
+      case 'timelineRange':
+        return timelineRange;
+      case 'dataLength':
+        return data.length;
+      case 'storageCount':
+        return storageLevels.length;
+      case 'storageLatestLabel':
+        return storageLevels[storageLevels.length - 1]?.label ?? null;
+      case 'latestFlowRate':
+        return latestPoint ? latestPoint.flowRate : null;
+      case 'latestPressure':
+        return latestPoint ? latestPoint.pressure : null;
+      default:
+        return null;
+    }
+  };
+
+  const formatMetaValue = (value, meta) => {
+    if (value === null || value === undefined) {
+      return 'N/A';
+    }
+    let formatted = value;
+    if (typeof value === 'number' && typeof meta?.precision === 'number') {
+      formatted = value.toFixed(meta.precision);
+    }
+    if (typeof formatted === 'number') {
+      formatted = formatted.toString();
+    }
+    if (meta?.suffix && formatted !== 'N/A') {
+      formatted = `${formatted}${meta.suffix}`;
+    }
+    return formatted;
+  };
+
+  const buildDatasetFromConfig = (datasetConfig) => {
+    if (!datasetConfig) {
+      return [];
+    }
+    let sourceData = [];
+    if (datasetConfig.source === 'storageLevels') {
+      sourceData = storageLevels;
+    } else {
+      sourceData = data;
+    }
+    if (datasetConfig.map === 'flowRate') {
+      sourceData = sourceData.map((point) => ({ timestamp: point.timestamp, flowRate: point.flowRate }));
+    } else if (datasetConfig.map === 'pressure') {
+      sourceData = sourceData.map((point) => ({ timestamp: point.timestamp, pressure: point.pressure }));
+    }
+    if (typeof datasetConfig.limit === 'number') {
+      return previewData(sourceData, datasetConfig.limit);
+    }
+    return sourceData;
   };
 
   const openDetails = (payload) => setDetailView(payload);
@@ -312,62 +366,20 @@ function App() {
   };
 
   const buildChartDetail = (type) => {
-    switch (type) {
-      case 'purity':
-        return {
-          title: 'Daily Oxygen Purity',
-          description: 'Daily comparison between oxygen purity, flow rate, and pressure metrics for the latest reporting window.',
-          meta: [
-            { label: 'Date range', value: timelineRange },
-            { label: 'Data points', value: data.length }
-          ],
-          dataset: previewData(data, 8)
-        };
-      case 'storage':
-        return {
-          title: 'Storage Level by Month',
-          description: 'Contrasts reserve storage levels month-over-month to highlight seasonal dips.',
-          meta: [
-            { label: 'Months tracked', value: storageLevels.length },
-            { label: 'Latest month', value: storageLevels[storageLevels.length - 1]?.label || 'N/A' }
-          ],
-          dataset: storageLevels
-        };
-      case 'flow':
-        return {
-          title: 'Daily Flow Rate',
-          description: 'Highlights daily patient consumption trends and sudden surges in oxygen flow.',
-          meta: [
-            {
-              label: 'Latest reading',
-              value: latestPoint ? `${latestPoint.flowRate.toFixed(1)} m³/h` : 'N/A'
-            },
-            { label: 'Date range', value: timelineRange }
-          ],
-          dataset: previewData(
-            data.map((point) => ({ timestamp: point.timestamp, flowRate: point.flowRate })),
-            8
-          )
-        };
-      case 'pressure':
-        return {
-          title: 'Daily Pressure Trend',
-          description: 'Monitors distribution manifold pressure day over day to surface fluctuations before alarms fire.',
-          meta: [
-            {
-              label: 'Latest reading',
-              value: latestPoint ? `${latestPoint.pressure.toFixed(1)} bar` : 'N/A'
-            },
-            { label: 'Date range', value: timelineRange }
-          ],
-          dataset: previewData(
-            data.map((point) => ({ timestamp: point.timestamp, pressure: point.pressure })),
-            8
-          )
-        };
-      default:
-        return null;
+    const chartConfig = TREND_CHARTS[type];
+    if (!chartConfig) {
+      return null;
     }
+    const meta = (chartConfig.detailMeta || []).map((metaConfig) => ({
+      label: metaConfig.label,
+      value: formatMetaValue(resolveMetaValue(metaConfig.source), metaConfig)
+    }));
+    return {
+      title: chartConfig.detailTitle || chartConfig.panelTitle,
+      description: chartConfig.detailDescription,
+      meta,
+      dataset: buildDatasetFromConfig(chartConfig.dataset)
+    };
   };
 
   const openChartDetails = (key) => {
@@ -400,48 +412,16 @@ function App() {
     }
   ];
 
-  const statCards = [
-    {
-      id: 'purity',
-      label: 'Oxygen purity %',
-      value: `${status.purity}%`,
-      delta: trendValue('purity', '%'),
-      helper: 'vs previous week',
-      icon: FiDroplet,
-      tone: 'mint',
-      description: 'Tracks delivered oxygen purity versus the regulatory baseline.'
-    },
-    {
-      id: 'flowRate',
-      label: 'Flow rate m³/h',
-      value: `${status.flowRate}`,
-      delta: trendValue('flowRate'),
-      helper: 'Average department',
-      icon: FiLayers,
-      tone: 'amber',
-      description: 'Measures total oxygen throughput per hour across wards.'
-    },
-    {
-      id: 'pressure',
-      label: 'Delivery pressure bar',
-      value: `${status.pressure}`,
-      delta: trendValue('pressure'),
-      helper: 'Stable manifold',
-      icon: FiTarget,
-      tone: 'rose',
-      description: 'Shows manifold pressure stability at the main distribution header.'
-    },
-    {
-      id: 'coverage',
-      label: 'Demand coverage %',
-      value: `${status.demandCoverage}%`,
-      delta: trendValue('demandCoverage', '%'),
-      helper: 'Capacity reserved',
-      icon: FiTrendingUp,
-      tone: 'gold',
-      description: 'Represents how much of current demand is secured by supply commitments.'
-    }
-  ];
+  const statCards = KPI_DEFINITIONS.map((kpi) => ({
+    id: kpi.id,
+    label: kpi.label,
+    value: metricValue(kpi.valueKey, kpi.valueSuffix || ''),
+    delta: trendValue(kpi.deltaKey, kpi.deltaSuffix || ''),
+    helper: kpi.helper,
+    icon: KPI_ICON_MAP[kpi.iconKey] || null,
+    tone: kpi.tone,
+    description: kpi.description
+  }));
 
   const detailPayloads = {
     purity: buildChartDetail('purity'),
@@ -478,6 +458,12 @@ function App() {
     if (handler) {
       handler();
     }
+  };
+  const handleStreamChange = (nextStreamId) => {
+    if (!nextStreamId) {
+      return;
+    }
+    setActiveStream(nextStreamId);
   };
   const isTrendsView = activeView === 'Trends';
   const isLogsView = activeView === 'Logs';
@@ -535,6 +521,13 @@ function App() {
               demandPanelPulse={demandPanelPulse}
               unacknowledgedAlarms={unacknowledgedAlarms}
               lastUpdated={lastUpdated}
+              streamOptions={streamOptions}
+              activeStream={activeStream}
+              onStreamChange={handleStreamChange}
+              currentStreamProfile={currentStreamProfile}
+              currentStreamLabel={currentStreamProfile?.label || '-'}
+              currentStreamProcess={currentStreamProcess}
+              trendChartConfig={TREND_CHARTS}
             />
           )}
         </div>
