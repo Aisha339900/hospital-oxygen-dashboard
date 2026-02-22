@@ -15,6 +15,7 @@ import DashboardPage from "./pages/DashboardPage";
 import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
 import DetailModal from "./components/DetailModal";
+import ChatWidget from "./components/ChatWidget";
 import KPI_DEFINITIONS from "./Data/KPIs_data.js";
 import TREND_CHARTS from "./Data/trend_charts_data.js";
 import STREAM_PRESETS from "./Data/StreamPresets_data.js";
