@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiSearch, FiSun, FiBell } from 'react-icons/fi';
+import { FiSun, FiBell } from 'react-icons/fi';
 
 function StatusHeader({ isTrendsView, unacknowledgedAlarms, lastUpdated, currentStreamLabel }) {
   return (
@@ -23,16 +23,11 @@ function StatusHeader({ isTrendsView, unacknowledgedAlarms, lastUpdated, current
       <div className="status-right">
         {isTrendsView ? (
           <>
-            <div className="search-box placeholder-box" aria-hidden="true"></div>
             <span className="icon-btn placeholder-circle" aria-hidden="true"></span>
             <span className="icon-btn placeholder-circle" aria-hidden="true"></span>
           </>
         ) : (
           <>
-            <div className="search-box">
-              <FiSearch aria-hidden="true" />
-              <input type="text" placeholder="Search" aria-label="Search modules" />
-            </div>
             <button className="icon-btn" aria-label="Toggle theme">
               <FiSun />
             </button>

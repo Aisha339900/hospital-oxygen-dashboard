@@ -259,29 +259,12 @@ body {
 	color: var(--muted);
 }
 
-.search-box {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	border: 1px solid var(--border);
-	border-radius: 14px;
-	padding: 8px 14px;
-	background: var(--panel-strong);
-}
 
-.search-box.placeholder-box,
 .today-select.placeholder-box {
 	display: block;
 	border: none;
 	padding: 0;
 	cursor: default;
-}
-
-.search-box input {
-	border: none;
-	background: transparent;
-	outline: none;
-	color: var(--text);
 }
 
 .icon-btn {
