@@ -2,29 +2,35 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { FiInfo, FiExternalLink } from 'react-icons/fi';
 
-function FlowRatePanel({ data, formatTimestamp, detailPayload, onOpenDetails }) {
+function FlowRatePanel({ data, formatTimestamp, detailPayload, onOpenDetails, chartConfig = {} }) {
+  const title = chartConfig.panelTitle || 'Daily Flow Rate';
+  const subtitle = chartConfig.panelSubtitle || 'Daily patient demand';
+  const infoLabel = chartConfig.infoLabel || 'Info about daily flow rate';
+  const openLabel = chartConfig.openLabel || 'Open detailed daily flow rate data';
+  const description = chartConfig.detailDescription || detailPayload?.description;
+  const chartId = chartConfig.id || 'flow';
   return (
     <article className="panel">
       <div className="panel-header">
         <div>
-          <p className="panel-title">Daily Flow Rate</p>
-          <span>Daily patient demand</span>
+          <p className="panel-title">{title}</p>
+          <span>{subtitle}</span>
         </div>
         <div className="panel-controls">
           <div className="panel-actions">
             <button
               className="icon-chip info"
               type="button"
-              title={detailPayload?.description}
-              aria-label="Info about daily flow rate"
+              title={description}
+              aria-label={infoLabel}
             >
               <FiInfo aria-hidden="true" />
             </button>
             <button
               className="icon-chip"
               type="button"
-              aria-label="Open detailed daily flow rate data"
-              onClick={() => onOpenDetails('flow')}
+              aria-label={openLabel}
+              onClick={() => onOpenDetails(chartId)}
             >
               <FiExternalLink aria-hidden="true" />
             </button>

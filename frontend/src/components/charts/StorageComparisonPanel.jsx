@@ -2,29 +2,35 @@ import React from 'react';
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { FiInfo, FiExternalLink } from 'react-icons/fi';
 
-function StorageComparisonPanel({ storageLevels, detailPayload, onOpenDetails }) {
+function StorageComparisonPanel({ storageLevels, detailPayload, onOpenDetails, chartConfig = {} }) {
+  const title = chartConfig.panelTitle || 'Storage Level by Month';
+  const subtitle = chartConfig.panelSubtitle || 'Last month vs this month';
+  const infoLabel = chartConfig.infoLabel || 'Info about storage level by month';
+  const openLabel = chartConfig.openLabel || 'Open detailed monthly storage data';
+  const description = chartConfig.detailDescription || detailPayload?.description;
+  const chartId = chartConfig.id || 'storage';
   return (
     <article className="panel storage-panel">
       <div className="panel-header">
         <div>
-          <p className="panel-title">Storage Level by Month</p>
-          <span>Last month vs this month</span>
+          <p className="panel-title">{title}</p>
+          <span>{subtitle}</span>
         </div>
         <div className="panel-controls">
           <div className="panel-actions">
             <button
               className="icon-chip info"
               type="button"
-              title={detailPayload?.description}
-              aria-label="Info about storage level by month"
+              title={description}
+              aria-label={infoLabel}
             >
               <FiInfo aria-hidden="true" />
             </button>
             <button
               className="icon-chip"
               type="button"
-              aria-label="Open detailed monthly storage data"
-              onClick={() => onOpenDetails('storage')}
+              aria-label={openLabel}
+              onClick={() => onOpenDetails(chartId)}
             >
               <FiExternalLink aria-hidden="true" />
             </button>
