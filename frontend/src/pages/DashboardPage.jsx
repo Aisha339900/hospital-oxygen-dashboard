@@ -35,7 +35,8 @@ function DashboardPage({
   onStreamChange,
   currentStreamProfile,
   currentStreamLabel,
-  currentStreamProcess
+  currentStreamProcess,
+  trendChartConfig = {}
 }) {
   return (
     <>
@@ -64,11 +65,13 @@ function DashboardPage({
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.purity}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.purity}
           />
           <StorageComparisonPanel
             storageLevels={storageLevels}
             detailPayload={detailPayloads.storage}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.storage}
           />
         </section>
 
@@ -78,12 +81,14 @@ function DashboardPage({
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.flow}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.flow}
           />
           <PressureTrendPanel
             data={data}
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.pressure}
             onOpenDetails={openChartDetails}
+            chartConfig={trendChartConfig?.pressure}
           />
         </section>
       </div>

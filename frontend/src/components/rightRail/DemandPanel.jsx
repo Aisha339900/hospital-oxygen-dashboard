@@ -5,6 +5,8 @@ function DemandPanel({ isTrendsView, supplyDemand, supplyFill, supplyIsHealthy, 
     return null;
   }
 
+  const constrainedFill = Math.min(Math.max(supplyFill || 0, 0), 100);
+
   return (
     <section className={`right-card demand-panel demand ${demandPanelPulse ? 'pulse' : ''}`}>
       <h4>{isTrendsView ? <span className="placeholder-bar short" aria-hidden="true"></span> : 'Demand vs Supply'}</h4>
@@ -25,7 +27,7 @@ function DemandPanel({ isTrendsView, supplyDemand, supplyFill, supplyIsHealthy, 
             <strong>{supplyDemand.currentSupply} m³/h</strong>
           </div>
           <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${supplyFill}%` }}></div>
+            <div className="progress-fill" style={{ width: `${constrainedFill}%` }}></div>
           </div>
           <p className={`status-note ${supplyIsHealthy ? 'healthy' : 'risk'}`}>{supplyDemand.status}</p>
           <p className="forecast-copy">{supplyDemand.forecast}</p>
