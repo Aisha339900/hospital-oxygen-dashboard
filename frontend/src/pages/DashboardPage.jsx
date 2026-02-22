@@ -11,7 +11,6 @@ import BackupPanel from '../components/rightRail/BackupPanel';
 import DemandPanel from '../components/rightRail/DemandPanel';
 
 function DashboardPage({
-  isTrendsView,
   statCards,
   detailPayloads,
   openMetricDetails,
@@ -42,14 +41,12 @@ function DashboardPage({
     <>
       <div className="main-column">
         <StatusHeader
-          isTrendsView={isTrendsView}
           unacknowledgedAlarms={unacknowledgedAlarms}
           lastUpdated={lastUpdated}
           currentStreamLabel={currentStreamLabel}
         />
 
         <TodayRow
-          isTrendsView={isTrendsView}
           streamOptions={streamOptions}
           activeStream={activeStream}
           onStreamChange={onStreamChange}
@@ -57,7 +54,7 @@ function DashboardPage({
           currentStreamProcess={currentStreamProcess}
         />
 
-        <StatGrid statCards={statCards} isTrendsView={isTrendsView} openMetricDetails={openMetricDetails} />
+        <StatGrid statCards={statCards} openMetricDetails={openMetricDetails} />
 
         <section className="panel-row primary">
           <PurityOverviewPanel
@@ -94,20 +91,9 @@ function DashboardPage({
       </div>
 
       <aside className="right-rail">
-        <AlertsPanel
-          isTrendsView={isTrendsView}
-          alarms={alarms}
-          formatTimeAgo={formatTimeAgo}
-          alarmPanelPulse={alarmPanelPulse}
-        />
-        <BackupPanel
-          isTrendsView={isTrendsView}
-          backup={backup}
-          formatTimeAgo={formatTimeAgo}
-          backupPanelPulse={backupPanelPulse}
-        />
+        <AlertsPanel alarms={alarms} formatTimeAgo={formatTimeAgo} alarmPanelPulse={alarmPanelPulse} />
+        <BackupPanel backup={backup} formatTimeAgo={formatTimeAgo} backupPanelPulse={backupPanelPulse} />
         <DemandPanel
-          isTrendsView={isTrendsView}
           supplyDemand={supplyDemand}
           supplyFill={supplyFill}
           supplyIsHealthy={supplyIsHealthy}

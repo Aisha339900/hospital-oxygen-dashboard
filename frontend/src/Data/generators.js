@@ -1,11 +1,14 @@
 import BACKUP_CONFIG from './Backup_data.js';
 import DEMAND_PANEL_DATA from './Demand_data.js';
+import { generateAlarmPanelData } from './alarm_logic.js';
 
 // Basic math helpers reused across generator routines.
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 const withJitter = (base, variance = 0) => base + (Math.random() - 0.5) * variance * 2;
 
 // Dashboard trend charts
+const PSI_TO_BAR = 0.0689476;
+
 const generateTrendSeries = (profile) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -13,15 +16,26 @@ const generateTrendSeries = (profile) => {
   return Array.from({ length: 14 }, (_, index) => {
     const day = new Date(today);
     day.setDate(today.getDate() - (13 - index));
+    const pressurePsi = clamp(
+      withJitter(profile?.pressureBaseline ?? 45, profile?.pressureVariance ?? 5),
+      0,
+      120
+    );
     return {
       timestamp: day.getTime(),
       purity: clamp(withJitter(purityBaseline, profile?.purityVariance ?? 1), 0, 100),
       flowRate: clamp(withJitter(profile?.flowBaseline ?? 55, profile?.flowVariance ?? 6), 0, 120),
-      pressure: clamp(withJitter(profile?.pressureBaseline ?? 45, profile?.pressureVariance ?? 5), 0, 80),
+      pressure: pressurePsi,
+      pressureBar: pressurePsi * PSI_TO_BAR,
       demandCoverage: clamp(
         withJitter(profile?.demandCoverageBaseline ?? 80, profile?.demandVariance ?? 6),
         0,
         140
+      ),
+      specificEnergy: clamp(
+        withJitter(profile?.specificEnergyBaseline ?? 0.68, profile?.specificEnergyVariance ?? 0.05),
+        0.4,
+        1.2
       )
     };
   });
@@ -48,6 +62,7 @@ const generateStreamStatus = (dataPoints) => {
     flowRate: latest.flowRate.toFixed(2),
     pressure: latest.pressure.toFixed(2),
     demandCoverage: latest.demandCoverage.toFixed(2),
+    specificEnergy: (latest.specificEnergy ?? 0).toFixed(2),
     timestamp: latest.timestamp
   };
 };
@@ -101,42 +116,6 @@ const generateBackupPanelData = (profile) => {
 };
 
 // Alerts panel
-const generateAlarmPanelData = () => {
-  const alarms = [];
-  const now = Date.now();
-
-  if (Math.random() > 0.6) {
-    alarms.push({
-      id: 1,
-      severity: 'warning',
-      message: 'Oxygen purity below optimal level',
-      timestamp: now - 300000,
-      acknowledged: false
-    });
-  }
-
-  if (Math.random() > 0.7) {
-    alarms.push({
-      id: 2,
-      severity: 'critical',
-      message: 'Pressure fluctuation detected',
-      timestamp: now - 180000,
-      acknowledged: false
-    });
-  }
-
-  if (Math.random() > 0.8) {
-    alarms.push({
-      id: 3,
-      severity: 'info',
-      message: 'Routine maintenance scheduled',
-      timestamp: now - 600000,
-      acknowledged: true
-    });
-  }
-
-  return alarms;
-};
 
 const formatDemandValue = (value, fallback = '0.0') => {
   if (typeof value === 'number' && Number.isFinite(value)) {

@@ -16,7 +16,9 @@ const streamPresets = {
     storageVariance: 6,
     backupBaseline: 58,
     backupVariance: 10,
-    purityVariance: 1.2
+    purityVariance: 1.2,
+    specificEnergyBaseline: 0.68,
+    specificEnergyVariance: 0.05
   },
   membraneFeed: {
     id: 'membraneFeed',
@@ -34,7 +36,9 @@ const streamPresets = {
     storageVariance: 5,
     backupBaseline: 60,
     backupVariance: 9,
-    purityVariance: 1
+    purityVariance: 1,
+    specificEnergyBaseline: 0.66,
+    specificEnergyVariance: 0.05
   },
   membranePermeate: {
     id: 'membranePermeate',
@@ -52,7 +56,9 @@ const streamPresets = {
     storageVariance: 6,
     backupBaseline: 66,
     backupVariance: 8,
-    purityVariance: 1.6
+    purityVariance: 1.6,
+    specificEnergyBaseline: 0.7,
+    specificEnergyVariance: 0.06
   },
   membraneRetentate: {
     id: 'membraneRetentate',
@@ -70,7 +76,9 @@ const streamPresets = {
     storageVariance: 7,
     backupBaseline: 52,
     backupVariance: 10,
-    purityVariance: 1.1
+    purityVariance: 1.1,
+    specificEnergyBaseline: 0.72,
+    specificEnergyVariance: 0.07
   },
   psaProduct: {
     id: 'psaProduct',
@@ -88,7 +96,9 @@ const streamPresets = {
     storageVariance: 5,
     backupBaseline: 78,
     backupVariance: 6,
-    purityVariance: 1
+    purityVariance: 1,
+    specificEnergyBaseline: 0.62,
+    specificEnergyVariance: 0.04
   },
   psaOffGas: {
     id: 'psaOffGas',
@@ -106,7 +116,9 @@ const streamPresets = {
     storageVariance: 6,
     backupBaseline: 46,
     backupVariance: 11,
-    purityVariance: 0.8
+    purityVariance: 0.8,
+    specificEnergyBaseline: 0.75,
+    specificEnergyVariance: 0.06
   }
 };
 
