@@ -2,7 +2,6 @@ import React from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 
 function TodayRow({
-  isTrendsView,
   streamOptions = [],
   activeStream,
   onStreamChange,
@@ -36,66 +35,57 @@ function TodayRow({
 
   return (
     <div className="today-row">
-      {isTrendsView ? (
-        <>
-          <div className="today-select placeholder-box" aria-hidden="true"></div>
-          <span className="placeholder-bar short" aria-hidden="true"></span>
-        </>
-      ) : (
-        <>
-          <div className="today-select stream-select">
-            <label htmlFor="stream-picker" className="stream-label">
-              Stream
-            </label>
-            <div className="select-wrapper">
-              <select
-                id="stream-picker"
-                value={activeStream}
-                onChange={handleChange}
-                aria-label="Select oxygen production stream"
-              >
-                {streamOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <FiChevronDown aria-hidden="true" />
-            </div>
-          </div>
-          <div className="stream-meta">
-            {currentStreamProcess && (
-              <div className="stream-process-panel" role="group" aria-label="Process metrics">
-                {processSpecs.map((spec) => (
-                  <div key={spec.key} className="stream-process-pill">
-                    <span className="pill-label">{spec.label}</span>
-                    <span className="pill-value">
-                      {formatMetric(currentStreamProcess[spec.key], spec.digits)}
-                      <span className="pill-unit">{spec.unit}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {composition ? (
-              <div className="composition-inline" role="group" aria-label="Stream composition">
-                <span className="composition-title">Composition</span>
-                <span className="composition-item">
-                  O2 <strong>{formatComponent(composition.o2)}</strong>
-                </span>
-                <span className="composition-item">
-                  N2 <strong>{formatComponent(composition.n2)}</strong>
-                </span>
-                <span className="composition-item">
-                  Ar <strong>{formatComponent(composition.ar)}</strong>
+      <div className="today-select stream-select">
+        <label htmlFor="stream-picker" className="stream-label">
+          Stream
+        </label>
+        <div className="select-wrapper">
+          <select
+            id="stream-picker"
+            value={activeStream}
+            onChange={handleChange}
+            aria-label="Select oxygen production stream"
+          >
+            {streamOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <FiChevronDown aria-hidden="true" />
+        </div>
+      </div>
+      <div className="stream-meta">
+        {currentStreamProcess && (
+          <div className="stream-process-panel" role="group" aria-label="Process metrics">
+            {processSpecs.map((spec) => (
+              <div key={spec.key} className="stream-process-pill">
+                <span className="pill-label">{spec.label}</span>
+                <span className="pill-value">
+                  {formatMetric(currentStreamProcess[spec.key], spec.digits)}
+                  <span className="pill-unit">{spec.unit}</span>
                 </span>
               </div>
-            ) : (
-              <p className="sync-label">Select a stream to update dashboard metrics</p>
-            )}
+            ))}
           </div>
-        </>
-      )}
+        )}
+        {composition ? (
+          <div className="composition-inline" role="group" aria-label="Stream composition">
+            <span className="composition-title">Composition</span>
+            <span className="composition-item">
+              O2 <strong>{formatComponent(composition.o2)}</strong>
+            </span>
+            <span className="composition-item">
+              N2 <strong>{formatComponent(composition.n2)}</strong>
+            </span>
+            <span className="composition-item">
+              Ar <strong>{formatComponent(composition.ar)}</strong>
+            </span>
+          </div>
+        ) : (
+          <p className="sync-label">Select a stream to update dashboard metrics</p>
+        )}
+      </div>
     </div>
   );
 }

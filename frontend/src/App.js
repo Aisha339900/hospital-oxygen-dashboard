@@ -26,9 +26,9 @@ import {
   generateStreamStatus,
   generateStorageComparison,
   generateBackupPanelData,
-  generateAlarmPanelData,
   generateDemandPanelSnapshot,
 } from "./Data/generators.js";
+import { generateAlarmPanelData } from "./Data/alarm_logic.js";
 import "./App.css";
 
 const mapByStreamCode = (collection) => {
@@ -144,12 +144,22 @@ function App() {
         throw new Error("No stream profiles configured");
       }
       const trendSeries = generateTrendSeries(profile);
+      const latestPoint = trendSeries[trendSeries.length - 1] || null;
+      const nextStatus = generateStreamStatus(trendSeries);
+      const nextBackup = generateBackupPanelData(profile);
+      const nextStorage = generateStorageComparison(profile);
+      const nextSupplyDemand = generateDemandPanelSnapshot(streamId);
+      const nextAlarms = generateAlarmPanelData({
+        latestPoint,
+        supplyDemand: nextSupplyDemand,
+        backupData: nextBackup,
+      });
       setData(trendSeries);
-      setStatus(generateStreamStatus(trendSeries));
-      setAlarms(generateAlarmPanelData());
-      setBackup(generateBackupPanelData(profile));
-      setStorageLevels(generateStorageComparison(profile));
-      setSupplyDemand(generateDemandPanelSnapshot(streamId));
+      setStatus(nextStatus);
+      setBackup(nextBackup);
+      setStorageLevels(nextStorage);
+      setSupplyDemand(nextSupplyDemand);
+      setAlarms(nextAlarms);
       setLoading(false);
       setError(null);
     } catch (err) {
@@ -430,7 +440,6 @@ function App() {
         },
         { label: "Backup Status", icon: FiSettings },
         { label: "Demand & Supply", icon: FiTrendingUp },
-        { label: "Trends", icon: FiFileText },
       ],
     },
     {
@@ -483,7 +492,7 @@ function App() {
     "Backup Status": triggerBackupPanelPulse,
     "Demand & Supply": triggerDemandPanelPulse,
   };
-  const viewableDashboards = new Set(["Default", "Trends"]);
+  const viewableDashboards = new Set(["Default"]);
   const handleDashboardSelection = (label) => {
     if (viewableDashboards.has(label)) {
       setActiveView(label);
@@ -499,7 +508,6 @@ function App() {
     }
     setActiveStream(nextStreamId);
   };
-  const isTrendsView = activeView === "Trends";
   const isLogsView = activeView === "Logs";
   const isSettingsView = activeView === "Settings";
 
@@ -517,9 +525,7 @@ function App() {
         />
 
         <div
-          className={`workspace ${isTrendsView ? "trends-mode" : ""} ${isLogsView ? "logs-mode" : ""} ${
-            isSettingsView ? "settings-mode" : ""
-          }`}
+          className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""}`}
         >
           {isLogsView ? (
             <LogsPage
@@ -539,7 +545,6 @@ function App() {
             </div>
           ) : (
             <DashboardPage
-              isTrendsView={isTrendsView}
               statCards={statCards}
               detailPayloads={detailPayloads}
               openMetricDetails={openMetricDetails}

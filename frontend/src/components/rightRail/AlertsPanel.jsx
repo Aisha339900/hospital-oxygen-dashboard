@@ -1,16 +1,10 @@
 import React from 'react';
 
-function AlertsPanel({ isTrendsView, alarms, formatTimeAgo, alarmPanelPulse }) {
+function AlertsPanel({ alarms, formatTimeAgo, alarmPanelPulse }) {
   return (
     <section className={`right-card alarm-panel ${alarmPanelPulse ? 'pulse' : ''}`}>
-      <h4>{isTrendsView ? <span className="placeholder-bar short" aria-hidden="true"></span> : 'Alarm & Alert'}</h4>
-      {isTrendsView ? (
-        <div className="placeholder-list" aria-hidden="true">
-          <span className="placeholder-bar medium"></span>
-          <span className="placeholder-bar medium"></span>
-          <span className="placeholder-bar medium"></span>
-        </div>
-      ) : alarms.length === 0 ? (
+      <h4>Alarm & Alert</h4>
+      {alarms.length === 0 ? (
         <p className="empty-state">All systems stable.</p>
       ) : (
         <ul className="alarm-list">

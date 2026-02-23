@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiSun, FiBell, FiMoon } from 'react-icons/fi';
 
-function StatusHeader({ isTrendsView, unacknowledgedAlarms, lastUpdated, currentStreamLabel }) {
+function StatusHeader({ unacknowledgedAlarms, lastUpdated, currentStreamLabel }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Load theme preference from localStorage
@@ -29,30 +29,12 @@ function StatusHeader({ isTrendsView, unacknowledgedAlarms, lastUpdated, current
   return (
     <header className="status-bar">
       <div className="status-left">
-        {isTrendsView ? (
-          <>
-            <span className="status-pill placeholder-pill" aria-hidden="true"></span>
-            <span className="status-pill placeholder-pill" aria-hidden="true"></span>
-            <span className="status-pill placeholder-pill" aria-hidden="true"></span>
-          </>
-        ) : (
-          <>
-            <span className="status-pill warn">Warning</span>
-            <span className="status-pill neutral">Stream: {currentStreamLabel}</span>
-            <span className="status-pill accent">Alarms: {unacknowledgedAlarms || 0}</span>
-            <span className="status-pill neutral">Last update {lastUpdated}</span>
-          </>
-        )}
+        <span className="status-pill neutral">Stream: {currentStreamLabel}</span>
+        <span className="status-pill accent">Alarms: {unacknowledgedAlarms || 0}</span>
+        <span className="status-pill neutral">Last update {lastUpdated}</span>
       </div>
       <div className="status-right">
-        {isTrendsView ? (
-          <>
-            <span className="icon-btn placeholder-circle" aria-hidden="true"></span>
-            <span className="icon-btn placeholder-circle" aria-hidden="true"></span>
-          </>
-        ) : (
-          <>
-           <button 
+        <button 
               className="icon-btn" 
               aria-label="Toggle theme"
               onClick={toggleTheme}
@@ -60,11 +42,9 @@ function StatusHeader({ isTrendsView, unacknowledgedAlarms, lastUpdated, current
             >
               {isDarkMode ? <FiSun /> : <FiMoon />}
             </button>
-            <button className="icon-btn" aria-label="Notifications">
-              <FiBell />
-            </button>
-          </>
-        )}
+        <button className="icon-btn" aria-label="Notifications">
+          <FiBell />
+        </button>
       </div>
     </header>
   );
