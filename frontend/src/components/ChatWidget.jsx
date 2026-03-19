@@ -7,15 +7,15 @@ const QUICK_ACTIONS = [
     label: "Oxygen purity meaning",
     value: "What does oxygen purity mean in the dashboard?",
   },
-  { label: "Low Purity alarm", value: "What does “Low Purity” alarm mean?" },
+  { label: "Low Purity alarm", value: 'What does "Low Purity" alarm mean?' },
   { label: "Export report", value: "How do I export a report?" },
 ];
 
 function makeSessionId() {
-  // Stable per browser tab/device
   const key = "hos_session_id";
   const existing = localStorage.getItem(key);
   if (existing) return existing;
+
   const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
   localStorage.setItem(key, id);
   return id;
@@ -26,7 +26,6 @@ export default function ChatWidget({ webhookUrl }) {
   const [open, setOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(true);
   const [unread, setUnread] = useState(1);
-
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -34,7 +33,7 @@ export default function ChatWidget({ webhookUrl }) {
     {
       id: "welcome",
       role: "assistant",
-      text: "Welcome back! Ask me one of the dashboard FAQs (purity, alarms, PSA, reports, trends).",
+      text: "Welcome back! Ask me about dashboard metrics, alarms, PSA, purity, or reports.",
       ts: Date.now(),
     },
   ]);
@@ -42,13 +41,11 @@ export default function ChatWidget({ webhookUrl }) {
   const listRef = useRef(null);
 
   useEffect(() => {
-    // auto-hide toast
     const t = setTimeout(() => setToastVisible(false), 5000);
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    // scroll to bottom when messages change
     if (!listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, open]);
@@ -62,7 +59,16 @@ export default function ChatWidget({ webhookUrl }) {
 
   const send = async (text) => {
     const trimmed = (text ?? "").trim();
-    if (!trimmed || !webhookUrl) return;
+
+    if (!trimmed || sending) return;
+
+    if (!webhookUrl) {
+      pushMessage(
+        "assistant",
+        "Chatbot webhook URL is missing. Please check the REACT_APP_N8N_CHAT_WEBHOOK value in your .env file."
+      );
+      return;
+    }
 
     pushMessage("user", trimmed);
     setSending(true);
@@ -70,30 +76,48 @@ export default function ChatWidget({ webhookUrl }) {
     try {
       const res = await fetch(webhookUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
+          message: trimmed,
           sessionId,
-          action: "sendMessage",
-          chatInput: trimmed,
-          metadata: { source: "dashboard" }, // optional; shows in Chat Trigger output
+          source: "dashboard",
         }),
       });
 
-      const data = await res.json();
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        const errorMessage =
+          data?.message ||
+          data?.error ||
+          `Workflow request failed with status ${res.status}.`;
+        throw new Error(errorMessage);
+      }
 
       const reply =
         data?.reply ??
         data?.output ??
         data?.[0]?.reply ??
         data?.[0]?.output ??
-        "Sorry — no response was returned from the workflow.";
+        "Sorry — the workflow returned no reply.";
+
       pushMessage("assistant", reply);
 
-      if (!open) setUnread((u) => u + 1);
-    } catch (e) {
+      if (!open) {
+        setUnread((u) => u + 1);
+      }
+    } catch (error) {
       pushMessage(
         "assistant",
-        "Sorry — I couldn’t reach the chatbot workflow. Please check the webhook URL and workflow status.",
+        error?.message ||
+          "Sorry — I couldn’t reach the chatbot workflow. Please check the webhook URL, CORS, and workflow status."
       );
     } finally {
       setSending(false);
@@ -123,7 +147,7 @@ export default function ChatWidget({ webhookUrl }) {
           <div className="chat-toast__text">
             <div className="chat-toast__title">Welcome back!</div>
             <div className="chat-toast__subtitle">
-              Ask about the dashboard metrics & alarms.
+              Ask about dashboard metrics and alarms.
             </div>
           </div>
           <button
@@ -136,7 +160,6 @@ export default function ChatWidget({ webhookUrl }) {
         </div>
       )}
 
-      {/* Floating launcher (bottom-right) */}
       <button
         className="chat-launcher"
         onClick={open ? () => setOpen(false) : openChat}
@@ -146,18 +169,11 @@ export default function ChatWidget({ webhookUrl }) {
         {unread > 0 && <span className="chat-badge">{unread}</span>}
       </button>
 
-      {/* Chat panel */}
       {open && (
-        <div
-          className="chat-panel"
-          role="dialog"
-          aria-label="Dashboard chatbot"
-        >
+        <div className="chat-panel" role="dialog" aria-label="Dashboard chatbot">
           <div className="chat-panel__header">
             <div className="chat-panel__title">
-              <div className="chat-panel__name">
-                Oxygen Dashboard Assistant
-              </div>
+              <div className="chat-panel__name">Oxygen Dashboard Assistant</div>
             </div>
             <button
               className="chat-panel__close"
@@ -167,6 +183,7 @@ export default function ChatWidget({ webhookUrl }) {
               <FiX />
             </button>
           </div>
+
           <div className="chat-panel__quick">
             {QUICK_ACTIONS.map((a) => (
               <button
@@ -174,6 +191,7 @@ export default function ChatWidget({ webhookUrl }) {
                 className="chat-quick-btn"
                 onClick={() => send(a.value)}
                 disabled={sending}
+                type="button"
               >
                 {a.label}
               </button>
@@ -192,7 +210,7 @@ export default function ChatWidget({ webhookUrl }) {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question…"
+              placeholder="Ask a question..."
               disabled={sending}
             />
             <button
@@ -208,4 +226,3 @@ export default function ChatWidget({ webhookUrl }) {
     </>
   );
 }
-
