@@ -35,7 +35,16 @@ function DashboardPage({
   currentStreamProfile,
   currentStreamLabel,
   currentStreamProcess,
-  trendChartConfig = {}
+  trendChartConfig = {},
+  isSimulationRunning,
+  isSimulationPaused,
+  simulationSpeed,
+  elapsedSimulationTime,
+  onPlay,
+  onPause,
+  onStop,
+  onReset,
+  onSpeedChange,
 }) {
   return (
     <>
@@ -44,6 +53,15 @@ function DashboardPage({
           unacknowledgedAlarms={unacknowledgedAlarms}
           lastUpdated={lastUpdated}
           currentStreamLabel={currentStreamLabel}
+          isSimulationRunning={isSimulationRunning}
+          isSimulationPaused={isSimulationPaused}
+          simulationSpeed={simulationSpeed}
+          elapsedSimulationTime={elapsedSimulationTime}
+          onPlay={onPlay}
+          onPause={onPause}
+          onStop={onStop}
+          onReset={onReset}
+          onSpeedChange={onSpeedChange}
         />
 
         <TodayRow

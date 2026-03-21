@@ -137,6 +137,13 @@ function App() {
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
 
+  // Simulation control state
+  const [isSimulationRunning, setIsSimulationRunning] = useState(true);
+  const [isSimulationPaused, setIsSimulationPaused] = useState(false);
+  const [simulationSpeed, setSimulationSpeed] = useState(1);
+  const [elapsedSimulationTime, setElapsedSimulationTime] = useState(0);
+  const simulationIntervalRef = useRef(null);
+
   const refreshStreamData = useCallback((streamId) => {
     try {
       const profile = STREAM_PROFILES[streamId] || STREAM_OPTIONS[0];
@@ -180,6 +187,7 @@ function App() {
         alarmPulseTimeoutRef,
         backupPulseTimeoutRef,
         demandPulseTimeoutRef,
+        simulationIntervalRef,
       ].forEach((ref) => {
         if (ref.current) {
           clearTimeout(ref.current);
@@ -195,6 +203,72 @@ function App() {
       }
     };
   }, [logPreviewUrl]);
+
+  // Periodic simulation interval — drives live data refresh
+  useEffect(() => {
+    if (simulationIntervalRef.current) {
+      clearInterval(simulationIntervalRef.current);
+      simulationIntervalRef.current = null;
+    }
+
+    if (!isSimulationRunning || isSimulationPaused) {
+      return;
+    }
+
+    const intervalMs = Math.round(5000 / simulationSpeed);
+
+    simulationIntervalRef.current = setInterval(() => {
+      if (activeStream) {
+        refreshStreamData(activeStream);
+      }
+      setElapsedSimulationTime((prev) => prev + 5000);
+    }, intervalMs);
+
+    return () => {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+        simulationIntervalRef.current = null;
+      }
+    };
+  }, [isSimulationRunning, isSimulationPaused, simulationSpeed, activeStream, refreshStreamData]);
+
+  const handlePlay = useCallback(() => {
+    setIsSimulationRunning(true);
+    setIsSimulationPaused(false);
+    if (activeStream) {
+      refreshStreamData(activeStream);
+    }
+  }, [activeStream, refreshStreamData]);
+
+  const handlePause = useCallback(() => {
+    setIsSimulationPaused(true);
+  }, []);
+
+  const handleStop = useCallback(() => {
+    setIsSimulationRunning(false);
+    setIsSimulationPaused(false);
+    setElapsedSimulationTime(0);
+    setData([]);
+    setAlarms([]);
+    setStorageLevels([]);
+    setSupplyDemand(null);
+    setBackup(null);
+    setStatus({ timestamp: Date.now(), purity: 0, flowRate: 0, pressure: 0, demandCoverage: 0 });
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setElapsedSimulationTime(0);
+    setSimulationSpeed(1);
+    setIsSimulationPaused(false);
+    setIsSimulationRunning(true);
+    if (activeStream) {
+      refreshStreamData(activeStream);
+    }
+  }, [activeStream, refreshStreamData]);
+
+  const handleSpeedChange = useCallback((speed) => {
+    setSimulationSpeed(speed);
+  }, []);
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -272,7 +346,7 @@ function App() {
   const latestPoint = data[data.length - 1];
   const earliestPoint = data[0];
   const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
-  const lastUpdated = formatTimestamp(status.timestamp);
+  const lastUpdated = status ? formatTimestamp(status.timestamp) : "--";
   const supplyIsHealthy =
     supplyDemand &&
     parseFloat(supplyDemand.currentSupply) >=
@@ -570,6 +644,15 @@ function App() {
               currentStreamLabel={currentStreamProfile?.label || "-"}
               currentStreamProcess={currentStreamProcess}
               trendChartConfig={TREND_CHARTS}
+              isSimulationRunning={isSimulationRunning}
+              isSimulationPaused={isSimulationPaused}
+              simulationSpeed={simulationSpeed}
+              elapsedSimulationTime={elapsedSimulationTime}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onStop={handleStop}
+              onReset={handleReset}
+              onSpeedChange={handleSpeedChange}
             />
           )}
         </div>

@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { FiSun, FiBell, FiMoon } from 'react-icons/fi';
+import SimulationControls from '../SimulationControls';
+import SimulationStatusBar from '../SimulationStatusBar';
 
-function StatusHeader({ unacknowledgedAlarms, lastUpdated, currentStreamLabel }) {
+function StatusHeader({
+  unacknowledgedAlarms,
+  lastUpdated,
+  currentStreamLabel,
+  isSimulationRunning,
+  isSimulationPaused,
+  simulationSpeed,
+  elapsedSimulationTime,
+  onPlay,
+  onPause,
+  onStop,
+  onReset,
+  onSpeedChange,
+}) {
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Load theme preference from localStorage
@@ -32,8 +47,24 @@ function StatusHeader({ unacknowledgedAlarms, lastUpdated, currentStreamLabel })
         <span className="status-pill neutral">Stream: {currentStreamLabel}</span>
         <span className="status-pill accent">Alarms: {unacknowledgedAlarms || 0}</span>
         <span className="status-pill neutral">Last update {lastUpdated}</span>
+        <SimulationStatusBar
+          isSimulationRunning={isSimulationRunning}
+          isSimulationPaused={isSimulationPaused}
+          simulationSpeed={simulationSpeed}
+          elapsedSimulationTime={elapsedSimulationTime}
+        />
       </div>
       <div className="status-right">
+        <SimulationControls
+          isSimulationRunning={isSimulationRunning}
+          isSimulationPaused={isSimulationPaused}
+          simulationSpeed={simulationSpeed}
+          onPlay={onPlay}
+          onPause={onPause}
+          onStop={onStop}
+          onReset={onReset}
+          onSpeedChange={onSpeedChange}
+        />
         <button 
               className="icon-btn" 
               aria-label="Toggle theme"

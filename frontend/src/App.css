@@ -1665,3 +1665,151 @@ body {
 		bottom: 12px;
 	}
 }
+/* ─────────────────────────────────────────────
+   Simulation Controls
+───────────────────────────────────────────── */
+.sim-controls {
+display: flex;
+align-items: center;
+gap: 6px;
+}
+
+.sim-btn {
+width: 34px;
+height: 34px;
+border-radius: 10px;
+border: 1px solid var(--border);
+background: var(--panel-strong);
+color: var(--text);
+display: grid;
+place-items: center;
+cursor: pointer;
+transition: background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+font-size: 0.85rem;
+}
+
+.sim-btn:hover:not(:disabled) {
+background: var(--panel);
+border-color: var(--accent);
+}
+
+.sim-btn:disabled {
+opacity: 0.35;
+cursor: not-allowed;
+}
+
+.sim-btn--play:not(:disabled) {
+color: var(--success);
+}
+
+.sim-btn--pause:not(:disabled) {
+color: var(--warning);
+}
+
+.sim-btn--stop:not(:disabled) {
+color: var(--danger);
+}
+
+.sim-btn--reset:not(:disabled) {
+color: var(--accent-2);
+}
+
+.sim-speed-select {
+height: 34px;
+padding: 0 10px;
+border-radius: 10px;
+border: 1px solid var(--border);
+background: var(--panel-strong);
+color: var(--text);
+font-family: inherit;
+font-size: 0.78rem;
+font-weight: 600;
+cursor: pointer;
+appearance: none;
+-webkit-appearance: none;
+transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.sim-speed-select:hover {
+border-color: var(--accent);
+}
+
+.sim-speed-select:focus {
+outline: none;
+border-color: var(--accent);
+}
+
+/* ─────────────────────────────────────────────
+   Simulation Status Bar
+───────────────────────────────────────────── */
+.sim-status-bar {
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+.sim-status-pill {
+border-radius: 999px;
+padding: 4px 12px;
+font-size: 0.72rem;
+font-weight: 700;
+letter-spacing: 0.08em;
+text-transform: uppercase;
+}
+
+.sim-status--running {
+background: rgba(52, 211, 153, 0.18);
+color: var(--success);
+}
+
+.sim-status--paused {
+background: rgba(251, 191, 36, 0.18);
+color: var(--warning);
+}
+
+.sim-status--stopped {
+background: rgba(251, 113, 133, 0.18);
+color: var(--danger);
+}
+
+.sim-status-item {
+font-size: 0.76rem;
+font-weight: 600;
+color: var(--muted);
+letter-spacing: 0.04em;
+}
+
+.sim-status-time {
+font-variant-numeric: tabular-nums;
+}
+
+.sim-status-speed {
+background: rgba(124, 108, 250, 0.15);
+color: var(--accent);
+border-radius: 6px;
+padding: 2px 8px;
+}
+
+/* ─────────────────────────────────────────────
+   Responsive adjustments for simulation controls
+───────────────────────────────────────────── */
+@media (max-width: 900px) {
+.sim-status-bar {
+flex-wrap: wrap;
+}
+
+.sim-controls {
+flex-wrap: wrap;
+}
+}
+
+@media (max-width: 620px) {
+.status-bar {
+flex-direction: column;
+align-items: flex-start;
+}
+
+.status-right {
+flex-wrap: wrap;
+}
+}
