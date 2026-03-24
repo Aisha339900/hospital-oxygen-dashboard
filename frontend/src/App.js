@@ -218,6 +218,10 @@ function App() {
     if (minutes >= 1) {
       return `${minutes}m ago`;
     }
+    const seconds = Math.floor(diff / 1000);
+    if (seconds >= 1) {
+      return `${seconds}s ago`;
+    }
     return "Just now";
   };
 

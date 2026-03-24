@@ -14,7 +14,7 @@ const buildAlarm = (idBase, severity, message, timestamp, index) => ({
   message,
   timestamp,
   acknowledged: false
-});
+}); 
 
 const generateAlarmPanelData = ({ latestPoint, supplyDemand, backupData }) => {
   if (!latestPoint) {
