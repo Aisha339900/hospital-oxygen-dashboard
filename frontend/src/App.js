@@ -14,6 +14,12 @@ import Sidebar from "./components/Sidebar";
 import DashboardPage from "./pages/DashboardPage";
 import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
+import LoginPage from "./pages/LoginPage";
+import AlarmsPage from "./pages/AlarmsPage";
+import MeasurementsPage from "./pages/MeasurementsPage";
+import SystemHealthPage from "./pages/SystemHealthPage";
+import BackupPage from "./pages/BackupPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import DetailModal from "./components/DetailModal";
 import ChatWidget from "./components/ChatWidget";
 import KPI_DEFINITIONS from "./Data/KPIs_data.js";
@@ -29,6 +35,11 @@ import {
   generateDemandPanelSnapshot,
 } from "./Data/generators.js";
 import { generateAlarmPanelData } from "./Data/alarm_logic.js";
+import { AuthProvider } from "./context/AuthContext";
+import { MeasurementProvider } from "./context/MeasurementContext";
+import { AlarmProvider } from "./context/AlarmContext";
+import { SystemHealthProvider } from "./context/SystemHealthContext";
+import { useAuthContext } from "./context/AuthContext";
 import "./App.css";
 
 const mapByStreamCode = (collection) => {
@@ -113,7 +124,7 @@ const DEFAULT_LOG_METADATA = {
 
 const isBlobUrl = (url) => typeof url === "string" && url.startsWith("blob:");
 
-function App() {
+function AppContent() {
   const [status, setStatus] = useState(null);
   const [data, setData] = useState([]);
   const [alarms, setAlarms] = useState([]);
@@ -452,6 +463,10 @@ function App() {
         { label: "Logs", icon: FiFileText },
         { label: "Settings", icon: FiSettings },
         { label: "System Info", icon: FiActivity },
+        { label: "Measurements", icon: FiBarChart2 },
+        { label: "Alarms", icon: FiBell },
+        { label: "System Health", icon: FiActivity },
+        { label: "Backup", icon: FiLayers },
       ],
     },
   ];
@@ -512,8 +527,83 @@ function App() {
     }
     setActiveStream(nextStreamId);
   };
+
+  const handleNavigate = (label) => {
+    setActiveView(label);
+  };
+
   const isLogsView = activeView === "Logs";
   const isSettingsView = activeView === "Settings";
+  const isMeasurementsView = activeView === "Measurements";
+  const isAlarmsView = activeView === "Alarms";
+  const isSystemHealthView = activeView === "System Health";
+  const isBackupView = activeView === "Backup";
+
+  const renderMainContent = () => {
+    if (isLogsView) {
+      return (
+        <LogsPage
+          logUpload={logUpload}
+          logPreviewUrl={logPreviewUrl}
+          canInlineLogPreview={canInlineLogPreview}
+          handleLogUpload={handleLogUpload}
+          formatFileSize={formatFileSize}
+          uploadedLogTimestamp={uploadedLogTimestamp}
+        />
+      );
+    }
+    if (isSettingsView) {
+      return (
+        <div className="main-column settings-view">
+          <SettingsPage settings={settings} onToggleSetting={toggleSetting} />
+        </div>
+      );
+    }
+    if (isMeasurementsView) {
+      return <MeasurementsPage />;
+    }
+    if (isAlarmsView) {
+      return <AlarmsPage />;
+    }
+    if (isSystemHealthView) {
+      return <SystemHealthPage />;
+    }
+    if (isBackupView) {
+      return <BackupPage />;
+    }
+    if (activeView === "Default") {
+      return (
+        <DashboardPage
+          statCards={statCards}
+          detailPayloads={detailPayloads}
+          openMetricDetails={openMetricDetails}
+          openChartDetails={openChartDetails}
+          data={data}
+          storageLevels={storageLevels}
+          formatTimestamp={formatTimestamp}
+          alarms={alarms}
+          formatTimeAgo={formatTimeAgo}
+          backup={backup}
+          supplyDemand={supplyDemand}
+          supplyFill={supplyFill}
+          supplyIsHealthy={supplyIsHealthy}
+          alarmPanelPulse={alarmPanelPulse}
+          backupPanelPulse={backupPanelPulse}
+          demandPanelPulse={demandPanelPulse}
+          unacknowledgedAlarms={unacknowledgedAlarms}
+          lastUpdated={lastUpdated}
+          streamOptions={streamOptions}
+          activeStream={activeStream}
+          onStreamChange={handleStreamChange}
+          currentStreamProfile={currentStreamProfile}
+          currentStreamLabel={currentStreamProfile?.label || "-"}
+          currentStreamProcess={currentStreamProcess}
+          trendChartConfig={TREND_CHARTS}
+        />
+      );
+    }
+    return <NotFoundPage onGoHome={() => setActiveView("Default")} />;
+  };
 
   return (
     <>
@@ -526,61 +616,59 @@ function App() {
           onDashboardSelect={handleDashboardSelection}
           onLogsSelect={() => setActiveView("Logs")}
           onSettingsSelect={() => setActiveView("Settings")}
+          onNavigate={handleNavigate}
         />
 
         <div
           className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""}`}
         >
-          {isLogsView ? (
-            <LogsPage
-              logUpload={logUpload}
-              logPreviewUrl={logPreviewUrl}
-              canInlineLogPreview={canInlineLogPreview}
-              handleLogUpload={handleLogUpload}
-              formatFileSize={formatFileSize}
-              uploadedLogTimestamp={uploadedLogTimestamp}
-            />
-          ) : isSettingsView ? (
-            <div className="main-column settings-view">
-              <SettingsPage
-                settings={settings}
-                onToggleSetting={toggleSetting}
-              />
-            </div>
-          ) : (
-            <DashboardPage
-              statCards={statCards}
-              detailPayloads={detailPayloads}
-              openMetricDetails={openMetricDetails}
-              openChartDetails={openChartDetails}
-              data={data}
-              storageLevels={storageLevels}
-              formatTimestamp={formatTimestamp}
-              alarms={alarms}
-              formatTimeAgo={formatTimeAgo}
-              backup={backup}
-              supplyDemand={supplyDemand}
-              supplyFill={supplyFill}
-              supplyIsHealthy={supplyIsHealthy}
-              alarmPanelPulse={alarmPanelPulse}
-              backupPanelPulse={backupPanelPulse}
-              demandPanelPulse={demandPanelPulse}
-              unacknowledgedAlarms={unacknowledgedAlarms}
-              lastUpdated={lastUpdated}
-              streamOptions={streamOptions}
-              activeStream={activeStream}
-              onStreamChange={handleStreamChange}
-              currentStreamProfile={currentStreamProfile}
-              currentStreamLabel={currentStreamProfile?.label || "-"}
-              currentStreamProcess={currentStreamProcess}
-              trendChartConfig={TREND_CHARTS}
-            />
-          )}
+          {renderMainContent()}
         </div>
       </div>
       <DetailModal detailView={detailView} onClose={closeDetails} />
       <ChatWidget webhookUrl={process.env.REACT_APP_N8N_CHAT_WEBHOOK} />
     </>
+  );
+}
+
+/**
+ * ProtectedContent – renders the main app only when authenticated.
+ * While auth is being verified it shows a loading screen.
+ * When not authenticated it shows the login page.
+ */
+function ProtectedContent() {
+  const { isAuthenticated, loading } = useAuthContext();
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <span>Loading dashboard...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <AppContent />;
+}
+
+/**
+ * App – root component. Wraps the application with context providers
+ * and delegates rendering to ProtectedContent.
+ */
+function App() {
+  return (
+    <AuthProvider>
+      <MeasurementProvider>
+        <AlarmProvider>
+          <SystemHealthProvider>
+            <ProtectedContent />
+          </SystemHealthProvider>
+        </AlarmProvider>
+      </MeasurementProvider>
+    </AuthProvider>
   );
 }
 

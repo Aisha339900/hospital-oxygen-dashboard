@@ -12,7 +12,7 @@ const AuthContext = createContext();
 const initialState = {
   user: null,
   isAuthenticated: false,
-  loading: false,
+  loading: true,
   error: null,
   token: null,
 };
@@ -53,20 +53,32 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const authHook = useAuth();
 
-  // Initialize auth from localStorage
+  // Verify session with backend on every mount (always async → loading=true
+  // remains visible until the call completes or fails).
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("authToken");
-    if (storedUser && token) {
-      dispatch({
-        type: "LOGIN_SUCCESS",
-        payload: {
-          user: JSON.parse(storedUser),
-          token,
-        },
-      });
-    }
-  }, []);
+    const checkAuth = async () => {
+      try {
+        const response = await authHook.getCurrentUser();
+        const userData = response?.data || response;
+        if (userData) {
+          const token = localStorage.getItem("authToken");
+          dispatch({
+            type: "LOGIN_SUCCESS",
+            payload: { user: userData, token: token || "" },
+          });
+        } else {
+          dispatch({ type: "SET_LOADING", payload: false });
+        }
+      } catch (err) {
+        // Session invalid or no backend – clear any stale data
+        localStorage.removeItem("user");
+        localStorage.removeItem("authToken");
+        dispatch({ type: "SET_LOADING", payload: false });
+      }
+    };
+
+    checkAuth();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(
     async (email, password) => {

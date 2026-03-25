@@ -29,6 +29,11 @@
     "dev": "REACT_APP_ENV=development npm start",
     "prod": "REACT_APP_ENV=production npm start"
   },
+  "jest": {
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(axios)/)"
+    ]
+  },
   "eslintConfig": {
     "extends": [
       "react-app",
