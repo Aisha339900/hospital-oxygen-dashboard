@@ -45,7 +45,9 @@ export const useSystemHealth = (options = {}) => {
     setError(null);
     try {
       const response = await systemHealthService.getSystemHealthHistory(params);
-      setHealthHistory(response.data || []);
+      setHealthHistory(
+        Array.isArray(response) ? response : response?.data || [],
+      );
     } catch (err) {
       setError(err.message || "Failed to fetch system health history");
       console.error("Error fetching system health history:", err);

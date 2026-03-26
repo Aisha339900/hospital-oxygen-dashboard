@@ -62,7 +62,7 @@ export const alarmService = {
   },
 
   /**
-   * Update alarm
+   * Update alarm (backend: PUT /alarms/:id with { status })
    */
   updateAlarm: async (id, data) => {
     try {
@@ -77,24 +77,14 @@ export const alarmService = {
    * Acknowledge alarm
    */
   acknowledgeAlarm: async (id) => {
-    try {
-      const response = await apiClient.patch(`/alarms/${id}/acknowledge`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
+    return alarmService.updateAlarm(id, { status: "acknowledged" });
   },
 
   /**
    * Resolve alarm
    */
   resolveAlarm: async (id) => {
-    try {
-      const response = await apiClient.patch(`/alarms/${id}/resolve`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
+    return alarmService.updateAlarm(id, { status: "resolved" });
   },
 
   /**

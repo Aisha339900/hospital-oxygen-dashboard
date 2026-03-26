@@ -27,7 +27,7 @@ export const useMeasurements = (options = {}) => {
         setMeasurements(response.data || []);
         setPagination({
           ...pagination,
-          total: response.total || 0,
+          total: response.pagination?.total ?? 0,
         });
       } catch (err) {
         setError(err.message || "Failed to fetch measurements");
@@ -75,7 +75,9 @@ export const useMeasurements = (options = {}) => {
         startTime,
         endTime,
       );
-      setMeasurements(response.data || []);
+      setMeasurements(
+        Array.isArray(response) ? response : response?.data || [],
+      );
       return response;
     } catch (err) {
       setError(err.message || "Failed to fetch measurements by time range");

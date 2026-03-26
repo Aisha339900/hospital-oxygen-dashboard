@@ -2,15 +2,22 @@ import apiClient from "./api";
 
 export const systemHealthService = {
   /**
-   * Get current system health
+   * Latest single health record (backend: GET /system-health/latest)
    */
-  getSystemHealth: async () => {
+  getLatestHealth: async () => {
     try {
-      const response = await apiClient.get("/system-health");
+      const response = await apiClient.get("/system-health/latest");
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
     }
+  },
+
+  /**
+   * Current system health — same as latest for dashboard use
+   */
+  getSystemHealth: async () => {
+    return systemHealthService.getLatestHealth();
   },
 
   /**
@@ -26,13 +33,11 @@ export const systemHealthService = {
   },
 
   /**
-   * Get system health history
+   * All health records (backend has no /history; use list sorted by time)
    */
   getSystemHealthHistory: async (params = {}) => {
     try {
-      const response = await apiClient.get("/system-health/history", {
-        params,
-      });
+      const response = await apiClient.get("/system-health", { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -64,24 +69,24 @@ export const systemHealthService = {
   },
 
   /**
-   * Get logging status
+   * Logging status from latest health document
    */
   getLoggingStatus: async () => {
     try {
-      const response = await apiClient.get("/system-health/logging-status");
-      return response.data;
+      const latest = await systemHealthService.getLatestHealth();
+      return latest ? { logging_status: latest.logging_status } : null;
     } catch (error) {
       throw error.response?.data || error;
     }
   },
 
   /**
-   * Get dashboard status
+   * Dashboard status from latest health document
    */
   getDashboardStatus: async () => {
     try {
-      const response = await apiClient.get("/system-health/dashboard-status");
-      return response.data;
+      const latest = await systemHealthService.getLatestHealth();
+      return latest ? { dashboard_status: latest.dashboard_status } : null;
     } catch (error) {
       throw error.response?.data || error;
     }

@@ -16,19 +16,20 @@ import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
 import DetailModal from "./components/DetailModal";
 import ChatWidget from "./components/ChatWidget";
-import KPI_DEFINITIONS from "./Data/KPIs_data.js";
-import TREND_CHARTS from "./Data/trend_charts_data.js";
-import STREAM_PRESETS from "./Data/StreamPresets_data.js";
-import STREAM_COMPOSITIONS from "./Data/Compositions_data.js";
-import STREAM_CONTROLS from "./Data/stream_controls_data.js";
+import KPI_DEFINITIONS from "./config/kpiDefinitions.js";
+import TREND_CHARTS from "./config/trendChartsConfig.js";
+import STREAM_PRESETS from "./config/streamPresets.js";
+import STREAM_COMPOSITIONS from "./config/streamCompositions.js";
+import STREAM_CONTROLS from "./config/streamControlsData.js";
 import {
   generateTrendSeries,
   generateStreamStatus,
   generateStorageComparison,
   generateBackupPanelData,
   generateDemandPanelSnapshot,
-} from "./Data/generators.js";
-import { generateAlarmPanelData } from "./Data/alarm_logic.js";
+} from "./utils/mockGenerator.js";
+import { generateAlarmPanelData } from "./utils/alarmLogic.js";
+import { loadLiveDashboard } from "./utils/liveDashboardMapper.js";
 import "./App.css";
 
 const mapByStreamCode = (collection) => {
@@ -97,8 +98,6 @@ const KPI_ICON_MAP = {
   trendingUp: FiTrendingUp,
 };
 
-// Generator helpers now live in /Data to keep App lean.
-
 const DEFAULT_SETTINGS = {
   emailAlerts: true,
 };
@@ -128,6 +127,8 @@ function App() {
   const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
   const [backupPanelPulse, setBackupPanelPulse] = useState(false);
   const [demandPanelPulse, setDemandPanelPulse] = useState(false);
+  const [useLiveApi, setUseLiveApi] = useState(false);
+  const [apiResolved, setApiResolved] = useState(false);
   const [logUpload, setLogUpload] = useState(() => ({
     ...DEFAULT_LOG_METADATA,
   }));
@@ -136,6 +137,7 @@ function App() {
   const alarmPulseTimeoutRef = useRef(null);
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
+  const prevStreamForMockRef = useRef(null);
 
   const refreshStreamData = useCallback((streamId) => {
     try {
@@ -169,10 +171,56 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (activeStream) {
+    let cancelled = false;
+    (async () => {
+      try {
+        const live = await loadLiveDashboard();
+        if (cancelled) {
+          return;
+        }
+        setData(live.data);
+        setStatus(live.status);
+        setStorageLevels(live.storageLevels);
+        setAlarms(live.alarms);
+        setBackup(live.backup);
+        setSupplyDemand(live.supplyDemand);
+        setUseLiveApi(true);
+        setLoading(false);
+        setError(null);
+      } catch {
+        if (cancelled) {
+          return;
+        }
+        setUseLiveApi(false);
+        refreshStreamData(activeStream);
+      } finally {
+        if (!cancelled) {
+          setApiResolved(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time API bootstrap
+  }, []);
+
+  useEffect(() => {
+    if (!apiResolved || useLiveApi) {
+      return;
+    }
+    if (!activeStream) {
+      return;
+    }
+    if (prevStreamForMockRef.current === null) {
+      prevStreamForMockRef.current = activeStream;
+      return;
+    }
+    if (prevStreamForMockRef.current !== activeStream) {
+      prevStreamForMockRef.current = activeStream;
       refreshStreamData(activeStream);
     }
-  }, [refreshStreamData, activeStream]);
+  }, [apiResolved, useLiveApi, activeStream, refreshStreamData]);
 
   useEffect(() => {
     return () => {

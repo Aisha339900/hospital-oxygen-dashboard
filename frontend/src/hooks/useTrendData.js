@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
-import * as api from "../services/api";
+import { useState, useCallback } from "react";
+import { historyService } from "../services";
 
+/**
+ * Trend data from backend /api/history/* (see historyController).
+ */
 const useTrendData = () => {
   const [trends, setTrends] = useState({
     oxygenPurity: [],
@@ -13,13 +16,14 @@ const useTrendData = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchOxygenPurityTrend = useCallback(async (days = 14) => {
+  const fetchOxygenPurityTrend = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.getOxygenPurityTrend(days);
-      setTrends((prev) => ({ ...prev, oxygenPurity: response.data }));
-      return response.data;
+      const payload = await historyService.getOxygenPurityTrend();
+      const series = payload?.data || [];
+      setTrends((prev) => ({ ...prev, oxygenPurity: series }));
+      return series;
     } catch (err) {
       console.error("Error fetching oxygen purity trend:", err);
       setError(err.message || "Failed to fetch oxygen purity trend");
@@ -29,13 +33,14 @@ const useTrendData = () => {
     }
   }, []);
 
-  const fetchFlowRateTrend = useCallback(async (days = 14) => {
+  const fetchFlowRateTrend = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.getFlowRateTrend(days);
-      setTrends((prev) => ({ ...prev, flowRate: response.data }));
-      return response.data;
+      const payload = await historyService.getFlowRateTrend();
+      const series = payload?.data || [];
+      setTrends((prev) => ({ ...prev, flowRate: series }));
+      return series;
     } catch (err) {
       console.error("Error fetching flow rate trend:", err);
       setError(err.message || "Failed to fetch flow rate trend");
@@ -45,13 +50,14 @@ const useTrendData = () => {
     }
   }, []);
 
-  const fetchPressureTrend = useCallback(async (days = 14) => {
+  const fetchPressureTrend = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.getPressureTrend(days);
-      setTrends((prev) => ({ ...prev, pressure: response.data }));
-      return response.data;
+      const payload = await historyService.getPressureTrend();
+      const series = payload?.data || [];
+      setTrends((prev) => ({ ...prev, pressure: series }));
+      return series;
     } catch (err) {
       console.error("Error fetching pressure trend:", err);
       setError(err.message || "Failed to fetch pressure trend");
@@ -61,29 +67,13 @@ const useTrendData = () => {
     }
   }, []);
 
-  const fetchStorageLevelTrend = useCallback(async (days = 14) => {
+  const fetchStorageLevelMonthly = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.getStorageLevelTrend(days);
-      setTrends((prev) => ({ ...prev, storageLevel: response.data }));
-      return response.data;
-    } catch (err) {
-      console.error("Error fetching storage level trend:", err);
-      setError(err.message || "Failed to fetch storage level trend");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchStorageLevelMonthly = useCallback(async (months = 6) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.getStorageLevelMonthly(months);
-      setTrends((prev) => ({ ...prev, storageLevelMonthly: response.data }));
-      return response.data;
+      const payload = await historyService.getStorageLevelMonthly();
+      setTrends((prev) => ({ ...prev, storageLevelMonthly: payload }));
+      return payload;
     } catch (err) {
       console.error("Error fetching monthly storage level:", err);
       setError(err.message || "Failed to fetch monthly storage level");
@@ -93,49 +83,36 @@ const useTrendData = () => {
     }
   }, []);
 
-  const fetchDemandCoverageTrend = useCallback(async (days = 14) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.getDemandCoverageTrend(days);
-      setTrends((prev) => ({ ...prev, demandCoverage: response.data }));
-      return response.data;
-    } catch (err) {
-      console.error("Error fetching demand coverage trend:", err);
-      setError(err.message || "Failed to fetch demand coverage trend");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchStorageLevelTrend = fetchStorageLevelMonthly;
 
-  const fetchAllTrends = useCallback(async (days = 14) => {
+  const fetchAllTrends = useCallback(async (demandCoverageFallback) => {
     try {
       setLoading(true);
       setError(null);
-      const [oxygen, flow, pressure, storage, demand] = await Promise.all([
-        api.getOxygenPurityTrend(days),
-        api.getFlowRateTrend(days),
-        api.getPressureTrend(days),
-        api.getStorageLevelTrend(days),
-        api.getDemandCoverageTrend(days),
+      const [oxygen, flow, pressure] = await Promise.all([
+        historyService.getOxygenPurityTrend(),
+        historyService.getFlowRateTrend(),
+        historyService.getPressureTrend(),
       ]);
 
+      const o = oxygen?.data || [];
+      const f = flow?.data || [];
+      const p = pressure?.data || [];
+
       setTrends({
-        oxygenPurity: oxygen.data,
-        flowRate: flow.data,
-        pressure: pressure.data,
-        storageLevel: storage.data,
+        oxygenPurity: o,
+        flowRate: f,
+        pressure: p,
+        storageLevel: [],
         storageLevelMonthly: [],
-        demandCoverage: demand.data,
+        demandCoverage: [],
       });
 
       return {
-        oxygenPurity: oxygen.data,
-        flowRate: flow.data,
-        pressure: pressure.data,
-        storageLevel: storage.data,
-        demandCoverage: demand.data,
+        oxygenPurity: o,
+        flowRate: f,
+        pressure: p,
+        demandCoverage: demandCoverageFallback,
       };
     } catch (err) {
       console.error("Error fetching all trends:", err);
@@ -155,7 +132,7 @@ const useTrendData = () => {
     fetchPressureTrend,
     fetchStorageLevelTrend,
     fetchStorageLevelMonthly,
-    fetchDemandCoverageTrend,
+    fetchDemandCoverageTrend: fetchFlowRateTrend,
     fetchAllTrends,
     setTrends,
     setError,

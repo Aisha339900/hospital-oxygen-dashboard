@@ -19,7 +19,7 @@ export const useAlarms = (options = {}) => {
     setError(null);
     try {
       const response = await alarmService.getAllAlarms(params);
-      setAlarms(response.data || []);
+      setAlarms(Array.isArray(response) ? response : response?.data || []);
     } catch (err) {
       setError(err.message || "Failed to fetch alarms");
       console.error("Error fetching alarms:", err);
@@ -33,7 +33,9 @@ export const useAlarms = (options = {}) => {
     setError(null);
     try {
       const response = await alarmService.getActiveAlarms(params);
-      setActiveAlarms(response.data || []);
+      setActiveAlarms(
+        Array.isArray(response) ? response : response?.data || [],
+      );
     } catch (err) {
       setError(err.message || "Failed to fetch active alarms");
       console.error("Error fetching active alarms:", err);

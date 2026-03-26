@@ -1,8 +1,8 @@
 import axios from "axios";
 
-// Get the API base URL from environment variables
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5050/api";
+// Use /api with CRA dev proxy (package.json "proxy") → backend on port 5050.
+// Override with REACT_APP_API_URL for production or custom ports.
+const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
 // Create axios instance
 const apiClient = axios.create({

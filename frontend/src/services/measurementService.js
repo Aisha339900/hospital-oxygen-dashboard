@@ -26,11 +26,11 @@ export const measurementService = {
   },
 
   /**
-   * Get latest measurement
+   * Latest system measurement (backend: GET /measurements/current)
    */
-  getLatestMeasurement: async () => {
+  getCurrentMeasurements: async () => {
     try {
-      const response = await apiClient.get("/measurements/latest");
+      const response = await apiClient.get("/measurements/current");
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -38,12 +38,22 @@ export const measurementService = {
   },
 
   /**
-   * Get measurements by time range
+   * Get latest measurement (alias for current)
+   */
+  getLatestMeasurement: async () => {
+    return measurementService.getCurrentMeasurements();
+  },
+
+  /**
+   * Get measurements by date range (backend: GET /measurements/range?startDate=&endDate=)
    */
   getMeasurementsByTimeRange: async (startTime, endTime) => {
     try {
-      const response = await apiClient.get("/measurements/time-range", {
-        params: { startTime, endTime },
+      const response = await apiClient.get("/measurements/range", {
+        params: {
+          startDate: startTime,
+          endDate: endTime,
+        },
       });
       return response.data;
     } catch (error) {
