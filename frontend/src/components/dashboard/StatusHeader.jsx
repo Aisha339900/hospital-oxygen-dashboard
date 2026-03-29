@@ -1,31 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { FiSun, FiBell, FiMoon } from 'react-icons/fi';
 
-function StatusHeader({ unacknowledgedAlarms, lastUpdated, currentStreamLabel }) {
-  const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Load theme preference from localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDarkMode(false);
-      document.documentElement.classList.add('light-mode');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newIsDarkMode = !isDarkMode;
-    setIsDarkMode(newIsDarkMode);
-
-    if (newIsDarkMode) {
-      document.documentElement.classList.remove('light-mode');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.add('light-mode');
-      localStorage.setItem('theme', 'light');
-    }
-  };
-
+function StatusHeader({
+  unacknowledgedAlarms,
+  lastUpdated,
+  currentStreamLabel,
+  isDarkMode,
+  onToggleTheme,
+}) {
   return (
     <header className="status-bar">
       <div className="status-left">
@@ -34,16 +16,17 @@ function StatusHeader({ unacknowledgedAlarms, lastUpdated, currentStreamLabel })
         <span className="status-pill neutral">Last update {lastUpdated}</span>
       </div>
       <div className="status-right">
-        <button 
-              className="icon-btn" 
-              aria-label="Toggle theme"
-              onClick={toggleTheme}
-              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDarkMode ? <FiSun /> : <FiMoon />}
-            </button>
-        <button className="icon-btn" aria-label="Notifications">
-          <FiBell />
+        <button
+          className="icon-btn"
+          type="button"
+          aria-label="Toggle theme"
+          onClick={onToggleTheme}
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? <FiSun aria-hidden="true" /> : <FiMoon aria-hidden="true" />}
+        </button>
+        <button className="icon-btn" type="button" aria-label="Notifications">
+          <FiBell aria-hidden="true" />
         </button>
       </div>
     </header>

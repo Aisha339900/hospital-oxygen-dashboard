@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// Use /api with CRA dev proxy (package.json "proxy") → backend on port 5050.
+// Use /api with CRA dev proxy (package.json "proxy"), backend on port 5050.
 // Override with REACT_APP_API_URL for production or custom ports.
 const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 

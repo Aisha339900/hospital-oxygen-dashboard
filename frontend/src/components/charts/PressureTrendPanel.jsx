@@ -1,6 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { FiInfo, FiExternalLink } from 'react-icons/fi';
+import { rechartsAxisTickProps, rechartsTooltipContentStyle } from '../../config/chartTheme';
 
 function PressureTrendPanel({ data, formatTimestamp, detailPayload, onOpenDetails, chartConfig = {} }) {
   const title = chartConfig.panelTitle || 'Daily Pressure Trend';
@@ -39,24 +40,22 @@ function PressureTrendPanel({ data, formatTimestamp, detailPayload, onOpenDetail
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatTimestamp}
             tickLine={false}
             axisLine={false}
-            stroke="rgba(255,255,255,0.5)"
+            stroke="var(--chart-axis)"
+            tick={rechartsAxisTickProps}
           />
-          <YAxis tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.5)" />
-          <Tooltip
-            labelFormatter={formatTimestamp}
-            contentStyle={{
-              background: '#0b1329',
-              borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.06)',
-              color: '#fff'
-            }}
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            stroke="var(--chart-axis)"
+            tick={rechartsAxisTickProps}
           />
+          <Tooltip labelFormatter={formatTimestamp} contentStyle={rechartsTooltipContentStyle} />
           <Line type="monotone" dataKey="pressure" stroke="#38bdf8" strokeWidth={2} dot />
         </LineChart>
       </ResponsiveContainer>

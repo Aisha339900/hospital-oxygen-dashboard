@@ -15,11 +15,19 @@ function DashboardPage({
   detailPayloads,
   openMetricDetails,
   openChartDetails,
+  data,
+  storageLevels,
   formatTimestamp,
+  alarms,
   formatTimeAgo,
+  backup,
+  supplyDemand,
+  supplyFill,
+  supplyIsHealthy,
   alarmPanelPulse,
   backupPanelPulse,
   demandPanelPulse,
+  unacknowledgedAlarms,
   lastUpdated,
   streamOptions,
   activeStream,
@@ -27,14 +35,19 @@ function DashboardPage({
   currentStreamProfile,
   currentStreamLabel,
   currentStreamProcess,
-  trendChartConfig = {}
+  trendChartConfig = {},
+  isDarkMode,
+  onToggleTheme,
 }) {
   return (
     <>
       <div className="main-column">
         <StatusHeader
+          unacknowledgedAlarms={unacknowledgedAlarms}
           lastUpdated={lastUpdated}
           currentStreamLabel={currentStreamLabel}
+          isDarkMode={isDarkMode}
+          onToggleTheme={onToggleTheme}
         />
 
         <TodayRow
@@ -47,15 +60,16 @@ function DashboardPage({
 
         <StatGrid statCards={statCards} openMetricDetails={openMetricDetails} />
 
-        {/* Chart panels now fetch their own data via hooks */}
         <section className="panel-row primary">
           <PurityOverviewPanel
+            data={data}
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.purity}
             onOpenDetails={openChartDetails}
             chartConfig={trendChartConfig?.purity}
           />
           <StorageComparisonPanel
+            storageLevels={storageLevels}
             detailPayload={detailPayloads.storage}
             onOpenDetails={openChartDetails}
             chartConfig={trendChartConfig?.storage}
@@ -64,12 +78,14 @@ function DashboardPage({
 
         <section className="panel-row">
           <FlowRatePanel
+            data={data}
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.flow}
             onOpenDetails={openChartDetails}
             chartConfig={trendChartConfig?.flow}
           />
           <PressureTrendPanel
+            data={data}
             formatTimestamp={formatTimestamp}
             detailPayload={detailPayloads.pressure}
             onOpenDetails={openChartDetails}
@@ -79,10 +95,15 @@ function DashboardPage({
       </div>
 
       <aside className="right-rail">
-  <AlertsPanel alarmPanelPulse={alarmPanelPulse} />
-  <BackupPanel backupPanelPulse={backupPanelPulse} />
-  <DemandPanel demandPanelPulse={demandPanelPulse} />
-</aside>
+        <AlertsPanel alarms={alarms} formatTimeAgo={formatTimeAgo} alarmPanelPulse={alarmPanelPulse} />
+        <BackupPanel backup={backup} formatTimeAgo={formatTimeAgo} backupPanelPulse={backupPanelPulse} />
+        <DemandPanel
+          supplyDemand={supplyDemand}
+          supplyFill={supplyFill}
+          supplyIsHealthy={supplyIsHealthy}
+          demandPanelPulse={demandPanelPulse}
+        />
+      </aside>
     </>
   );
 }

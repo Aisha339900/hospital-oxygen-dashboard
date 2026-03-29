@@ -27,7 +27,7 @@ import {
   generateStorageComparison,
   generateBackupPanelData,
   generateDemandPanelSnapshot,
-} from "./utils/mockGenerator.js";
+} from "./utils/mockGenerators.js";
 import { generateAlarmPanelData } from "./utils/alarmLogic.js";
 import { loadLiveDashboard } from "./utils/liveDashboardMapper.js";
 import "./App.css";
@@ -98,6 +98,8 @@ const KPI_ICON_MAP = {
   trendingUp: FiTrendingUp,
 };
 
+// Offline mock generators live in utils/mockGenerators.js.
+
 const DEFAULT_SETTINGS = {
   emailAlerts: true,
 };
@@ -111,6 +113,28 @@ const DEFAULT_LOG_METADATA = {
 };
 
 const isBlobUrl = (url) => typeof url === "string" && url.startsWith("blob:");
+
+/** Matches inline script in public/index.html: saved theme, else prefers-color-scheme, else dark. */
+function readInitialIsDark() {
+  try {
+    const t = localStorage.getItem("theme");
+    if (t === "light") {
+      return false;
+    }
+    if (t === "dark") {
+      return true;
+    }
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
 
 function App() {
   const [status, setStatus] = useState(null);
@@ -134,10 +158,66 @@ function App() {
   }));
   const [logPreviewUrl, setLogPreviewUrl] = useState(DEFAULT_LOG_ASSET_PATH);
   const [settings, setSettings] = useState({ ...DEFAULT_SETTINGS });
+  const [isDarkMode, setIsDarkMode] = useState(readInitialIsDark);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const alarmPulseTimeoutRef = useRef(null);
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
   const prevStreamForMockRef = useRef(null);
+
+  const toggleTheme = useCallback(() => {
+    setIsDarkMode((d) => {
+      const next = !d;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  }, []);
+
+  const closeMobileSidebar = useCallback(() => setSidebarMobileOpen(false), []);
+
+  const closeDetails = useCallback(() => setDetailView(null), []);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove("light-mode");
+    } else {
+      document.documentElement.classList.add("light-mode");
+    }
+    const meta = document.getElementById("theme-color-meta");
+    if (meta) {
+      meta.setAttribute("content", isDarkMode ? "#050b1f" : "#f5f5f5");
+    }
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    if (!sidebarMobileOpen) {
+      return undefined;
+    }
+    const onKey = (event) => {
+      if (event.key === "Escape" && !detailView) {
+        setSidebarMobileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sidebarMobileOpen, detailView]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 980px)");
+    const apply = () => {
+      if (mq.matches && sidebarMobileOpen) {
+        document.body.style.overflow = "hidden";
+      } else {
+        document.body.style.overflow = "";
+      }
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => {
+      mq.removeEventListener("change", apply);
+      document.body.style.overflow = "";
+    };
+  }, [sidebarMobileOpen]);
 
   const refreshStreamData = useCallback((streamId) => {
     try {
@@ -440,7 +520,6 @@ function App() {
   };
 
   const openDetails = (payload) => setDetailView(payload);
-  const closeDetails = () => setDetailView(null);
 
   const openMetricDetails = (card) => {
     openDetails({
@@ -546,6 +625,7 @@ function App() {
   };
   const viewableDashboards = new Set(["Default"]);
   const handleDashboardSelection = (label) => {
+    closeMobileSidebar();
     if (viewableDashboards.has(label)) {
       setActiveView(label);
     }
@@ -565,65 +645,102 @@ function App() {
 
   return (
     <>
-      <div className="app-grid">
-        <Sidebar
-          favoriteLinks={favoriteLinks}
-          sidebarCollections={sidebarCollections}
-          activeView={activeView}
-          viewableDashboards={viewableDashboards}
-          onDashboardSelect={handleDashboardSelection}
-          onLogsSelect={() => setActiveView("Logs")}
-          onSettingsSelect={() => setActiveView("Settings")}
-        />
+      <div className="app-shell">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <div className="app-grid">
+          <button
+            type="button"
+            className="sidebar-menu-toggle"
+            aria-label={
+              sidebarMobileOpen
+                ? "Close navigation menu"
+                : "Open navigation menu"
+            }
+            aria-expanded={sidebarMobileOpen}
+            onClick={() => setSidebarMobileOpen((open) => !open)}
+          />
+          {sidebarMobileOpen ? (
+            <button
+              type="button"
+              className="sidebar-scrim"
+              aria-label="Close menu"
+              onClick={closeMobileSidebar}
+            />
+          ) : null}
+          <Sidebar
+            className={sidebarMobileOpen ? "sidebar--open" : ""}
+            favoriteLinks={favoriteLinks}
+            sidebarCollections={sidebarCollections}
+            activeView={activeView}
+            viewableDashboards={viewableDashboards}
+            onDashboardSelect={handleDashboardSelection}
+            onLogsSelect={() => {
+              setActiveView("Logs");
+              closeMobileSidebar();
+            }}
+            onSettingsSelect={() => {
+              setActiveView("Settings");
+              closeMobileSidebar();
+            }}
+            isDarkMode={isDarkMode}
+            onToggleTheme={toggleTheme}
+          />
 
-        <div
-          className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""}`}
-        >
-          {isLogsView ? (
-            <LogsPage
-              logUpload={logUpload}
-              logPreviewUrl={logPreviewUrl}
-              canInlineLogPreview={canInlineLogPreview}
-              handleLogUpload={handleLogUpload}
-              formatFileSize={formatFileSize}
-              uploadedLogTimestamp={uploadedLogTimestamp}
-            />
-          ) : isSettingsView ? (
-            <div className="main-column settings-view">
-              <SettingsPage
-                settings={settings}
-                onToggleSetting={toggleSetting}
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""}`}
+          >
+            {isLogsView ? (
+              <LogsPage
+                logUpload={logUpload}
+                logPreviewUrl={logPreviewUrl}
+                canInlineLogPreview={canInlineLogPreview}
+                handleLogUpload={handleLogUpload}
+                formatFileSize={formatFileSize}
+                uploadedLogTimestamp={uploadedLogTimestamp}
               />
-            </div>
-          ) : (
-            <DashboardPage
-              statCards={statCards}
-              detailPayloads={detailPayloads}
-              openMetricDetails={openMetricDetails}
-              openChartDetails={openChartDetails}
-              data={data}
-              storageLevels={storageLevels}
-              formatTimestamp={formatTimestamp}
-              alarms={alarms}
-              formatTimeAgo={formatTimeAgo}
-              backup={backup}
-              supplyDemand={supplyDemand}
-              supplyFill={supplyFill}
-              supplyIsHealthy={supplyIsHealthy}
-              alarmPanelPulse={alarmPanelPulse}
-              backupPanelPulse={backupPanelPulse}
-              demandPanelPulse={demandPanelPulse}
-              unacknowledgedAlarms={unacknowledgedAlarms}
-              lastUpdated={lastUpdated}
-              streamOptions={streamOptions}
-              activeStream={activeStream}
-              onStreamChange={handleStreamChange}
-              currentStreamProfile={currentStreamProfile}
-              currentStreamLabel={currentStreamProfile?.label || "-"}
-              currentStreamProcess={currentStreamProcess}
-              trendChartConfig={TREND_CHARTS}
-            />
-          )}
+            ) : isSettingsView ? (
+              <div className="main-column settings-view">
+                <SettingsPage
+                  settings={settings}
+                  onToggleSetting={toggleSetting}
+                />
+              </div>
+            ) : (
+              <DashboardPage
+                statCards={statCards}
+                detailPayloads={detailPayloads}
+                openMetricDetails={openMetricDetails}
+                openChartDetails={openChartDetails}
+                data={data}
+                storageLevels={storageLevels}
+                formatTimestamp={formatTimestamp}
+                alarms={alarms}
+                formatTimeAgo={formatTimeAgo}
+                backup={backup}
+                supplyDemand={supplyDemand}
+                supplyFill={supplyFill}
+                supplyIsHealthy={supplyIsHealthy}
+                alarmPanelPulse={alarmPanelPulse}
+                backupPanelPulse={backupPanelPulse}
+                demandPanelPulse={demandPanelPulse}
+                unacknowledgedAlarms={unacknowledgedAlarms}
+                lastUpdated={lastUpdated}
+                streamOptions={streamOptions}
+                activeStream={activeStream}
+                onStreamChange={handleStreamChange}
+                currentStreamProfile={currentStreamProfile}
+                currentStreamLabel={currentStreamProfile?.label || "-"}
+                currentStreamProcess={currentStreamProcess}
+                trendChartConfig={TREND_CHARTS}
+                isDarkMode={isDarkMode}
+                onToggleTheme={toggleTheme}
+              />
+            )}
+          </main>
         </div>
       </div>
       <DetailModal detailView={detailView} onClose={closeDetails} />

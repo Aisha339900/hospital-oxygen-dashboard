@@ -1,16 +1,19 @@
 import React from 'react';
 
 function Sidebar({
+	className = '',
 	favoriteLinks,
 	sidebarCollections,
 	activeView,
 	viewableDashboards,
 	onDashboardSelect,
 	onLogsSelect,
-	onSettingsSelect
+	onSettingsSelect,
+	isDarkMode,
+	onToggleTheme,
 }) {
 	return (
-		<aside className="sidebar">
+		<aside className={`sidebar ${className}`.trim()}>
 			<div className="sidebar-brand">
 				<div className="logo-mark">O₂</div>
 				<div>
@@ -19,11 +22,11 @@ function Sidebar({
 				</div>
 			</div>
 
-			<div className="sidebar-tabs" role="tablist">
-				<button className="tab active" type="button">
+			<div className="sidebar-tabs" role="tablist" aria-label="Sidebar shortcuts">
+				<button className="tab active" type="button" tabIndex={-1} aria-current="true">
 					Favorites
 				</button>
-				<button className="tab" type="button">
+				<button className="tab" type="button" tabIndex={-1} disabled>
 					Recently
 				</button>
 			</div>
@@ -34,7 +37,7 @@ function Sidebar({
 				))}
 			</ul>
 
-			<div className="sidebar-menu">
+			<nav className="sidebar-menu" aria-label="Primary">
 				{sidebarCollections.map((section) => (
 					<div key={section.title} className="sidebar-section">
 						<p className="sidebar-section-title">{section.title}</p>
@@ -88,7 +91,7 @@ function Sidebar({
 						</ul>
 					</div>
 				))}
-			</div>
+			</nav>
 
 			<div className="sidebar-footer">
 				<p className="footer-label">Senior Design</p>

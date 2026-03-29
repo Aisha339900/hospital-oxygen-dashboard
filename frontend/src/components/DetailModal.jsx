@@ -1,20 +1,56 @@
-import React from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { FiX } from 'react-icons/fi';
 
 function DetailModal({ detailView, onClose }) {
+  const titleId = useId();
+  const closeBtnRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+
+  useEffect(() => {
+    if (!detailView) {
+      return undefined;
+    }
+    previouslyFocusedRef.current = document.activeElement;
+    const t = window.setTimeout(() => closeBtnRef.current?.focus(), 0);
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener('keydown', onKeyDown);
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [detailView, onClose]);
+
   if (!detailView) {
     return null;
   }
 
   return (
-    <div className="detail-modal-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="detail-modal" role="document" onClick={(event) => event.stopPropagation()}>
+    <div className="detail-modal-backdrop" onClick={onClose}>
+      <div
+        className="detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="detail-modal-header">
           <div>
             <p className="detail-modal-label">Detail preview</p>
-            <h3>{detailView.title}</h3>
+            <h3 id={titleId}>{detailView.title}</h3>
           </div>
-          <button className="icon-chip" type="button" aria-label="Close detail" onClick={onClose}>
+          <button
+            ref={closeBtnRef}
+            className="icon-chip"
+            type="button"
+            aria-label="Close detail"
+            onClick={onClose}
+          >
             <FiX aria-hidden="true" />
           </button>
         </div>
