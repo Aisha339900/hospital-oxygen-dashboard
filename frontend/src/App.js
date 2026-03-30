@@ -22,11 +22,11 @@ import STREAM_PRESETS from "./config/streamPresets.js";
 import STREAM_COMPOSITIONS from "./config/streamCompositions.js";
 import STREAM_CONTROLS from "./config/streamControlsData.js";
 import {
-  generateTrendSeries,
+  generateGlobalTrendSeries,
+  generateGlobalStorageComparison,
   generateStreamStatus,
-  generateStorageComparison,
   generateBackupPanelData,
-  generateDemandPanelSnapshot,
+  getStaticSystemDemandSupply,
 } from "./utils/mockGenerators.js";
 import { generateAlarmPanelData } from "./utils/alarmLogic.js";
 import { loadLiveDashboard } from "./utils/liveDashboardMapper.js";
@@ -164,6 +164,8 @@ function App() {
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
   const prevStreamForMockRef = useRef(null);
+  const offlineTrendSeriesRef = useRef(null);
+  const offlineStorageRef = useRef(null);
 
   const toggleTheme = useCallback(() => {
     setIsDarkMode((d) => {
@@ -225,22 +227,27 @@ function App() {
       if (!profile) {
         throw new Error("No stream profiles configured");
       }
-      const trendSeries = generateTrendSeries(profile);
+      if (!offlineTrendSeriesRef.current) {
+        offlineTrendSeriesRef.current = generateGlobalTrendSeries();
+      }
+      if (!offlineStorageRef.current) {
+        offlineStorageRef.current = generateGlobalStorageComparison();
+      }
+      const trendSeries = offlineTrendSeriesRef.current;
       const latestPoint = trendSeries[trendSeries.length - 1] || null;
       const nextStatus = generateStreamStatus(trendSeries);
       const nextBackup = generateBackupPanelData(profile);
-      const nextStorage = generateStorageComparison(profile);
-      const nextSupplyDemand = generateDemandPanelSnapshot(streamId);
+      const nextStorage = offlineStorageRef.current;
+      const supplyForAlarms = getStaticSystemDemandSupply();
       const nextAlarms = generateAlarmPanelData({
         latestPoint,
-        supplyDemand: nextSupplyDemand,
+        supplyDemand: supplyForAlarms,
         backupData: nextBackup,
       });
       setData(trendSeries);
       setStatus(nextStatus);
       setBackup(nextBackup);
       setStorageLevels(nextStorage);
-      setSupplyDemand(nextSupplyDemand);
       setAlarms(nextAlarms);
       setLoading(false);
       setError(null);
@@ -272,6 +279,7 @@ function App() {
           return;
         }
         setUseLiveApi(false);
+        setSupplyDemand(getStaticSystemDemandSupply());
         refreshStreamData(activeStream);
       } finally {
         if (!cancelled) {

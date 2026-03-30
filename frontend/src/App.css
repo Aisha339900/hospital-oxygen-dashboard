@@ -361,6 +361,16 @@ body {
 	gap: 20px;
 }
 
+.stream-trends-divider {
+	width: 100%;
+	height: 0;
+	margin: 4px 0 8px;
+	border: none;
+	border-top: 1px solid var(--border);
+	opacity: 0.95;
+	flex-shrink: 0;
+}
+
 .status-bar {
 	padding: 16px 22px;
 	display: flex;

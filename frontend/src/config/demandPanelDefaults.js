@@ -1,5 +1,32 @@
 // Demand vs Supply scenario templates (offline mock).
 const demandPanelDefaults = {
+  /** Single plant-wide snapshot when API is offline (does not vary with stream selection). */
+  systemDemandSupply: {
+    currentDemand: 83.7,
+    currentSupply: 56.7,
+    status: "Demand coverage below comfort band",
+  },
+  /** Used for offline trend KPI “demand coverage” when not stream-specific. */
+  offlineDemandCoveragePercent: 67.74,
+  /**
+   * Plant-wide trend mock (jittered). Same series for every stream until real API data exists.
+   * Adjust baselines/variances here — not tied to stream selection.
+   */
+  offlineTrendMock: {
+    purityBaseline: 94,
+    purityVariance: 1.2,
+    flowBaseline: 72,
+    flowVariance: 8,
+    pressureBarBaseline: 3.45,
+    pressureBarVariance: 0.2,
+    demandCoverageVariance: 6,
+    specificEnergyBaseline: 0.68,
+    specificEnergyVariance: 0.05,
+    storage: {
+      baseline: 48,
+      variance: 5,
+    },
+  },
   scenarios: {
     optimal: {
       id: "optimal",
@@ -18,38 +45,6 @@ const demandPanelDefaults = {
       label: "Immediate action required",
       status: "Supply deficit detected",
       forecast: "Activate contingency plan and notify maintenance",
-    },
-  },
-  streamProfiles: {
-    feed: {
-      scenario: "optimal",
-      currentDemand: 58.4,
-      currentSupply: 64.1,
-    },
-    membraneFeed: {
-      scenario: "optimal",
-      currentDemand: 60.7,
-      currentSupply: 67.3,
-    },
-    membranePermeate: {
-      scenario: "monitoring",
-      currentDemand: 55.6,
-      currentSupply: 52.8,
-    },
-    membraneRetentate: {
-      scenario: "monitoring",
-      currentDemand: 63.2,
-      currentSupply: 58.1,
-    },
-    psaProduct: {
-      scenario: "optimal",
-      currentDemand: 47.9,
-      currentSupply: 71.6,
-    },
-    psaOffGas: {
-      scenario: "critical",
-      currentDemand: 72.4,
-      currentSupply: 54.3,
     },
   },
 };

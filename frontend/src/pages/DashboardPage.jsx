@@ -57,6 +57,7 @@ function DashboardPage({
           currentStreamProfile={currentStreamProfile}
           currentStreamProcess={currentStreamProcess}
         />
+        <div className="stream-trends-divider" role="presentation" aria-hidden="true" />
 
         <StatGrid statCards={statCards} openMetricDetails={openMetricDetails} />
 
