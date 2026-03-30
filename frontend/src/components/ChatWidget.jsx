@@ -2,13 +2,22 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FiMessageSquare, FiX, FiSend } from "react-icons/fi";
 
 const QUICK_ACTIONS = [
-  { label: "What is PSA?", value: "What is PSA in this system?" },
+  { label: "What is PSA?", value: "__FAQ_PSA__", display: "What is PSA?" },
   {
     label: "Oxygen purity meaning",
-    value: "What does oxygen purity mean in the dashboard?",
+    value: "__FAQ_OXYGEN_PURITY__",
+    display: "What does oxygen purity mean in the dashboard?",
   },
-  { label: "Low Purity alarm", value: 'What does "Low Purity" alarm mean?' },
-  { label: "Export report", value: "How do I export a report?" },
+  {
+    label: "Low Purity alarm",
+    value: "__FAQ_LOW_PURITY_ALARM__",
+    display: 'What does Low Purity alarm mean?',
+  },
+  {
+    label: "Export report",
+    value: "__HELP_EXPORT_REPORT__",
+    display: "How do I export a report?",
+  },
 ];
 
 function makeSessionId() {
@@ -57,7 +66,7 @@ export default function ChatWidget({ webhookUrl }) {
     ]);
   };
 
-  const send = async (text) => {
+  const send = async (text, displayText = null) => {
     const trimmed = (text ?? "").trim();
 
     if (!trimmed || sending) return;
@@ -70,7 +79,7 @@ export default function ChatWidget({ webhookUrl }) {
       return;
     }
 
-    pushMessage("user", trimmed);
+    pushMessage("user", displayText || trimmed);
     setSending(true);
 
     try {
@@ -189,7 +198,7 @@ export default function ChatWidget({ webhookUrl }) {
               <button
                 key={a.label}
                 className="chat-quick-btn"
-                onClick={() => send(a.value)}
+                onClick={() => send(a.value, a.display)}                
                 disabled={sending}
                 type="button"
               >
