@@ -1,9 +1,21 @@
 import React from 'react';
 
-function BackupPanel({ backup, formatTimeAgo, backupPanelPulse }) {
+function BackupPanel({ backup, backupPanelPulse }) {
   if (!backup) {
     return null;
   }
+
+  const utilizationValue = Number(backup.utilization);
+  const utilization = Number.isFinite(utilizationValue)
+    ? utilizationValue
+    : 0;
+  const remainingValue = Number(backup.remainingLiters);
+  const remainingLiters = Number.isFinite(remainingValue) ? remainingValue : 0;
+  const formattedRemaining = `${Math.round(remainingLiters).toLocaleString()} L`;
+  const modeLabel =
+    typeof backup.mode === "string" && backup.mode.length
+      ? backup.mode.toUpperCase()
+      : "STANDBY";
 
   return (
     <section className={`right-card backup-panel ${backupPanelPulse ? 'pulse' : ''}`}>
@@ -11,19 +23,15 @@ function BackupPanel({ backup, formatTimeAgo, backupPanelPulse }) {
       <div className="right-grid">
         <div>
           <p>Mode</p>
-          <strong>{backup.mode.toUpperCase()}</strong>
+          <strong>{modeLabel}</strong>
         </div>
         <div>
-          <p>Level</p>
-          <strong>{backup.level.toFixed(1)}%</strong>
+          <p>Utilization</p>
+          <strong>{utilization.toFixed(1)}%</strong>
         </div>
         <div>
-          <p>Coverage</p>
-          <strong>{backup.remainingHours.toFixed(1)} h</strong>
-        </div>
-        <div>
-          <p>Last checked</p>
-          <strong>{formatTimeAgo(backup.lastChecked)}</strong>
+          <p>Backup Remaining</p>
+          <strong>{formattedRemaining}</strong>
         </div>
       </div>
     </section>

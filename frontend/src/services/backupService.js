@@ -88,9 +88,10 @@ export const backupService = {
   /**
    * Get backup status
    */
-  getBackupStatus: async () => {
+  getBackupStatus: async (scenario) => {
     try {
-      const response = await apiClient.get("/backups/status");
+      const config = scenario ? { params: { scenario } } : undefined;
+      const response = await apiClient.get("/backup-status", config);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

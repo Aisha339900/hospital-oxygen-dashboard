@@ -97,7 +97,7 @@ function DashboardPage({
 
       <aside className="right-rail">
         <AlertsPanel alarms={alarms} formatTimeAgo={formatTimeAgo} alarmPanelPulse={alarmPanelPulse} />
-        <BackupPanel backup={backup} formatTimeAgo={formatTimeAgo} backupPanelPulse={backupPanelPulse} />
+        <BackupPanel backup={backup} backupPanelPulse={backupPanelPulse} />
         <DemandPanel
           supplyDemand={supplyDemand}
           supplyFill={supplyFill}

@@ -119,21 +119,28 @@ const resolveBackupModeKey = (profile) => {
   return "active";
 };
 
+const getFallbackUtilization = () => {
+  return backupPanelDefaults?.fallbacks?.utilizationPercent ?? 60;
+};
+
+const getFallbackRemainingLiters = () => {
+  return backupPanelDefaults?.fallbacks?.remainingLiters ?? 0;
+};
+
 const generateBackupPanelData = (profile) => {
-  const baseline = profile?.backupBaseline ?? 60;
+  const baseline = profile?.backupBaseline ?? getFallbackUtilization();
   const modeKey = resolveBackupModeKey(profile);
   const modeConfig = backupPanelDefaults?.modes?.[modeKey] ||
     backupPanelDefaults?.modes?.active || {
       label: "Active supply",
       description: "Backup system supporting main line.",
     };
-  const remainingHours = clamp(24 + baseline / 2, 6, 72);
+  const utilization = clamp(baseline, 0, 100);
   return {
     mode: modeConfig.label,
     modeDescription: modeConfig.description,
-    level: clamp(baseline, 10, 100),
-    remainingHours,
-    lastChecked: Date.now() - 3600000,
+    utilization,
+    remainingLiters: getFallbackRemainingLiters(),
     thresholds: backupPanelDefaults?.thresholds || null,
   };
 };

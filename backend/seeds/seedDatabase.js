@@ -7,6 +7,7 @@ const SystemMeasurement = require("../models/systemMeasurement");
 const MeasurementHistory = require("../models/measurementHistory");
 const Alarm = require("../models/alarm");
 const SystemHealth = require("../models/systemHealth");
+const BackupStatus = require("../models/backupStatus");
 
 const { generateDummyMeasurements } = require("../utils/dataGenerator");
 
@@ -20,6 +21,7 @@ const seedDatabase = async () => {
     await MeasurementHistory.deleteMany({});
     await Alarm.deleteMany({});
     await SystemHealth.deleteMany({});
+    await BackupStatus.deleteMany({});
 
     console.log("Cleared existing data");
 
@@ -100,6 +102,16 @@ const seedDatabase = async () => {
     });
 
     console.log("Created system health data");
+
+    await BackupStatus.create({
+      scenario: "normal",
+      mode: "standby",
+      utilization_percent: 42,
+      remaining_liters: 50000,
+      status: "safe",
+    });
+
+    console.log("Created backup status data");
 
     console.log("Database seeded successfully!");
     process.exit(0);

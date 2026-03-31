@@ -6,6 +6,7 @@ const measurementController = require("../controllers/measurementController");
 const historyController = require("../controllers/historyController");
 const alarmController = require("../controllers/alarmController");
 const healthController = require("../controllers/healthController");
+const backupStatusController = require("../controllers/backupStatusController");
 
 // Stream routes
 router.get("/streams", streamController.getAllStreams);
@@ -39,6 +40,16 @@ router.get("/alarms", alarmController.getAllAlarms);
 router.get("/alarms/active", alarmController.getActiveAlarms);
 router.post("/alarms", alarmController.createAlarm);
 router.put("/alarms/:id", alarmController.updateAlarmStatus);
+
+// Backup status routes
+router.get(
+  "/backup-status",
+  backupStatusController.getBackupStatusByScenario,
+);
+router.get(
+  "/backup-status/all",
+  backupStatusController.getAllBackupStatuses,
+);
 
 // System health routes
 router.get("/system-health/latest", healthController.getLatestHealth);

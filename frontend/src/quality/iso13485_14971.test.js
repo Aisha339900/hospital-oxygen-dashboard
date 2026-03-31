@@ -17,8 +17,8 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         currentSupply: 100
       },
       backupData: {
-        remainingHours: 10,
-        level: 60
+        utilization: 60,
+        remainingLiters: 12000
       }
     };
 
@@ -48,8 +48,8 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         currentSupply: 100
       },
       backupData: {
-        remainingHours: 12,
-        level: 70
+        utilization: 70,
+        remainingLiters: 15000
       }
     });
 
@@ -78,8 +78,8 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         currentSupply: 120
       },
       backupData: {
-        remainingHours: 9,
-        level: 65
+        utilization: 65,
+        remainingLiters: 8000
       }
     });
 
@@ -116,8 +116,8 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         currentSupply: 100
       },
       backupData: {
-        remainingHours: 8,
-        level: 40
+        utilization: 40,
+        remainingLiters: 3000
       }
     });
 

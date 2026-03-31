@@ -279,8 +279,8 @@ function App() {
           return;
         }
         setUseLiveApi(false);
-        setSupplyDemand(getStaticSystemDemandSupply());
-        refreshStreamData(activeStream);
+        // setSupplyDemand(getStaticSystemDemandSupply());
+        // refreshStreamData(activeStream);
       } finally {
         if (!cancelled) {
           setApiResolved(true);

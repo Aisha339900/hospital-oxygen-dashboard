@@ -7,7 +7,9 @@ import {
   historyService,
   alarmService,
   systemHealthService,
+  backupService,
 } from "../services";
+import backupPanelDefaults from "../config/backupPanelDefaults.js";
 
 const PSI_TO_BAR = 0.0689476;
 
@@ -128,6 +130,17 @@ const SEVERITY_BADGE = {
   critical: "critical",
 };
 
+// const fallbackModeKey =
+//   backupPanelDefaults?.fallbackModeKey ?? backupPanelDefaults?.modes?.active?.id ?? "standby";
+// const fallbackModeLabel =
+//   backupPanelDefaults?.modes?.[fallbackModeKey]?.label ?? fallbackModeKey;
+// const fallbackUtilization =
+//   backupPanelDefaults?.fallbacks?.utilizationPercent ?? 0;
+// const fallbackRemaining =
+//   backupPanelDefaults?.fallbacks?.remainingLiters ?? 0;
+
+const buildBackupFallback = () => null;
+
 export function mapDbAlarmToPanel(a) {
   if (!a) return null;
   const msg = `${(a.alarm_type || "alarm").replace(/_/g, " ")} — measured ${a.measured_value ?? "n/a"}`;
@@ -140,19 +153,40 @@ export function mapDbAlarmToPanel(a) {
   };
 }
 
-export function mapHealthToBackupPanel(h) {
-  if (!h?.backup_status) return null;
-  const b = h.backup_status;
-  const modeLabels = {
-    automatic: "AUTOMATIC",
-    manual: "MANUAL",
-    disabled: "DISABLED",
-  };
+export function mapBackupStatusToPanel(payload) {
+  if (!payload) return null;
+
+  const source = payload.backup_status ?? payload;
+  if (!source) return null;
+
+  const fallback = buildBackupFallback();
+  const rawMode =
+    typeof source.mode === "string" && source.mode.length
+      ? source.mode
+      : fallback?.mode ?? "UNKNOWN";
+  const normalizedMode = rawMode.toLowerCase();
+  const modeConfig = backupPanelDefaults?.modes?.[normalizedMode];
+  const mode = modeConfig?.label ?? rawMode;
+
+  const utilizationCandidate =
+    source.utilization_percent ??
+    source.level_percent ??
+    source.utilization ??
+    fallback?.utilization ?? null;
+  const utilization = Number.isFinite(Number(utilizationCandidate))
+    ? Number(utilizationCandidate)
+    : 0;
+
+  const litersCandidate =
+    source.remaining_liters ?? source.remainingLiters ?? fallback?.remainingLiters ?? null;
+  const remainingLiters = Number.isFinite(Number(litersCandidate))
+    ? Number(litersCandidate)
+    : 0;
+
   return {
-    mode: modeLabels[b.mode] || String(b.mode || "AUTOMATIC"),
-    level: Number(b.level_percent ?? 0),
-    remainingHours: Number(b.estimated_coverage_hours ?? 0),
-    lastChecked: new Date(h.timestamp).getTime(),
+    mode,
+    utilization,
+    remainingLiters,
   };
 }
 
@@ -252,12 +286,24 @@ export async function loadLiveDashboard() {
   }
 
   let backup = null;
+  const preferredScenario = backupPanelDefaults?.defaultScenario;
   try {
-    const health = await systemHealthService.getLatestHealth();
-    backup = mapHealthToBackupPanel(health);
+    const backupPayload = await backupService.getBackupStatus(
+      preferredScenario,
+    );
+    backup = mapBackupStatusToPanel(backupPayload);
   } catch {
-    /* optional */
+    try {
+      const health = await systemHealthService.getLatestHealth();
+      backup = mapBackupStatusToPanel(health);
+    } catch {
+      backup = null;
+    }
   }
+
+  // if (!backup) {
+  //   backup = buildBackupFallback();
+  // }
 
   if (!status && merged.length === 0) {
     throw new Error("Live API unavailable");

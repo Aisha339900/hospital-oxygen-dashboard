@@ -1,5 +1,11 @@
 // Backup system mode definitions and thresholds (offline mock).
 const backupPanelDefaults = {
+  defaultScenario: "normal",
+  fallbackModeKey: "standby",
+  fallbacks: {
+    utilizationPercent: 60,
+    remainingLiters: 30000, //**not sure */
+  },
   modes: {
     active: {
       id: "active",

@@ -69,36 +69,38 @@ const generateAlarmPanelData = ({ latestPoint, supplyDemand, backupData }) => {
     }
   }
 
-  const remainingHours = toNumber(backupData?.remainingHours);
-  if (remainingHours !== null) {
-    if (remainingHours < 6) {
+  const remainingLiters = toNumber(
+    backupData?.remaining_liters ?? backupData?.remainingLiters,
+  );
+  if (remainingLiters !== null) {
+    if (remainingLiters < 500) {
       addAlarm(
-        "backup-hours-critical",
+        "backup-volume-critical",
         "critical",
-        `Backup coverage below 6 hours (${remainingHours.toFixed(1)}h).`,
+        `Backup oxygen critically low (${remainingLiters.toFixed(0)} L remaining).`,
       );
-    } else if (remainingHours < 8) {
+    } else if (remainingLiters < 5000) {
       addAlarm(
-        "backup-hours-warning",
+        "backup-volume-warning",
         "warning",
-        `Backup coverage trending low (${remainingHours.toFixed(1)}h).`,
+        `Backup oxygen running low (${remainingLiters.toFixed(0)} L remaining).`,
       );
     }
   }
 
-  const storageLevel = toNumber(backupData?.level);
-  if (storageLevel !== null) {
-    if (storageLevel < 15) {
+  const storageUtilization = toNumber(backupData?.utilization);
+  if (storageUtilization !== null) {
+    if (storageUtilization < 15) {
       addAlarm(
         "storage-critical",
         "critical",
-        `Storage level critical (${storageLevel.toFixed(1)}%).`,
+        `Backup utilization critical (${storageUtilization.toFixed(1)}%).`,
       );
-    } else if (storageLevel < 25) {
+    } else if (storageUtilization < 25) {
       addAlarm(
         "storage-warning",
         "warning",
-        `Storage level low (${storageLevel.toFixed(1)}%).`,
+        `Backup utilization low (${storageUtilization.toFixed(1)}%).`,
       );
     }
   }
