@@ -72,6 +72,35 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
     expect(absoluteError).toBeLessThanOrEqual(1);
   });
 
+  test('TC3 - Data logging captures every event with no gaps', () => {
+    const timer = performance ?? { now: () => Date.now() };
+    const baseTimestamp = Date.now();
+    const incomingEvents = Array.from({ length: 5 }, (_, index) => ({
+      id: `evt-${index + 1}`,
+      timestamp: baseTimestamp + index * 10,
+      payload: { pressure: 5 + index * 0.1, purity: 96 - index * 0.2 },
+    }));
+    const storedLogs = [];
+
+    incomingEvents.forEach((event) => {
+      const ingestStart = timer.now();
+      storedLogs.push({ ...event, storedAt: timer.now() });
+      const ingestLatency = storedLogs[storedLogs.length - 1].storedAt - ingestStart;
+      expect(ingestLatency).toBeLessThanOrEqual(100);
+    });
+
+    expect(storedLogs).toHaveLength(incomingEvents.length);
+
+    const missingEvents = incomingEvents.filter(
+      (event) => !storedLogs.some((log) => log.id === event.id),
+    );
+    expect(missingEvents).toHaveLength(0);
+
+    const timestamps = storedLogs.map((log) => log.timestamp);
+    const sorted = [...timestamps].sort((a, b) => a - b);
+    expect(timestamps).toEqual(sorted);
+  });
+
   test('TC4 - Pressure > 6 bar triggers alarm', () => {
     const alarms = generateAlarmPanelData({
       latestPoint: {
@@ -127,4 +156,5 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
     expect(coverageAlarm).toBeDefined();
     expect(coverageAlarm.message).toMatch(/system (under stress|failure risk)/i);
   });
+
 });

@@ -205,7 +205,13 @@ function App() {
   }, [sidebarMobileOpen, detailView]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return undefined;
+    }
     const mq = window.matchMedia("(max-width: 980px)");
+    if (!mq) {
+      return undefined;
+    }
     const apply = () => {
       if (mq.matches && sidebarMobileOpen) {
         document.body.style.overflow = "hidden";
