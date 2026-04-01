@@ -47,24 +47,22 @@ const generateAlarmPanelData = ({ latestPoint, supplyDemand, backupData }) => {
     }
   }
 
-  const demandValue = toNumber(supplyDemand?.currentDemand);
-  const supplyValue = toNumber(supplyDemand?.currentSupply);
-  let coveragePercent = toNumber(latestPoint.demandCoverage);
-  if (demandValue !== null && demandValue > 0 && supplyValue !== null) {
-    coveragePercent = (supplyValue / demandValue) * 100;
-  }
+  const supplyData = supplyDemand?.supply ?? supplyDemand ?? null;
+  const coveragePercent = toNumber(
+    supplyData?.coverage_percent ?? supplyData?.coveragePercent,
+  );
   if (coveragePercent !== null) {
-    if (coveragePercent < 85) {
+    if (coveragePercent < 70) {
       addAlarm(
         "coverage-critical",
         "critical",
-        `Demand coverage critical (${coveragePercent.toFixed(1)}%).`,
+        `System failure risk (coverage ${coveragePercent.toFixed(1)}%).`,
       );
     } else if (coveragePercent < 95) {
       addAlarm(
         "coverage-warning",
         "warning",
-        `Demand coverage low (${coveragePercent.toFixed(1)}%).`,
+        `System under stress (coverage ${coveragePercent.toFixed(1)}%).`,
       );
     }
   }

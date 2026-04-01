@@ -145,24 +145,35 @@ const generateBackupPanelData = (profile) => {
   };
 };
 
-const formatDemandValue = (value, fallback = "0.0") => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value.toFixed(1);
-  }
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric.toFixed(1) : fallback;
-};
-
 const getStaticSystemDemandSupply = () => {
   const d = demandPanelDefaults.systemDemandSupply;
   if (!d) {
     return null;
   }
+  const toNumeric = (value) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const demand = d.demand || {};
+  const supply = d.supply || {};
   return {
-    currentDemand: formatDemandValue(d.currentDemand),
-    currentSupply: formatDemandValue(d.currentSupply),
+    demand: {
+      totalRequests: toNumeric(demand.totalRequests),
+      generalRequests: toNumeric(demand.generalRequests),
+      icuRequests: toNumeric(demand.icuRequests),
+      status: demand.status,
+    },
+    supply: {
+      mainUtilizationPercent: toNumeric(supply.mainUtilizationPercent),
+      mainRemainingLiters: toNumeric(supply.mainRemainingLiters),
+      coveragePercent: toNumeric(supply.coveragePercent),
+      status: supply.status,
+    },
     status: d.status || "Supply status unavailable",
-    //forecast: d.forecast || "Awaiting forecast update",
+    forecast: d.forecast || null,
   };
 };
 

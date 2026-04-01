@@ -1,6 +1,19 @@
 import { performance } from 'perf_hooks';
-import { generateAlarmPanelData } from '../Data/alarm_logic';
+import { generateAlarmPanelData } from '../utils/alarmLogic';
 import { calculateUptimePercentage } from './uptime';
+
+const buildSupplyDemand = (coverage = 100) => ({
+  demand: {
+    totalRequests: 113,
+    generalRequests: 97,
+    icuRequests: 16
+  },
+  supply: {
+    coverage_percent: coverage,
+    main_remaining_liters: 54081,
+    main_utilization_percent: 63.95
+  }
+});
 
 describe('ISO 13485 / ISO 14971 quality controls', () => {
   test('TC1 - Purity alarm response under 2s when purity < 93%', () => {
@@ -12,10 +25,7 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         pressure: 85,
         specificEnergy: 0.7
       },
-      supplyDemand: {
-        currentDemand: 100,
-        currentSupply: 100
-      },
+      supplyDemand: buildSupplyDemand(100),
       backupData: {
         utilization: 60,
         remainingLiters: 12000
@@ -43,10 +53,7 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         pressureBar: 5.5,
         specificEnergy: 0.65
       },
-      supplyDemand: {
-        currentDemand: 100,
-        currentSupply: 100
-      },
+      supplyDemand: buildSupplyDemand(100),
       backupData: {
         utilization: 70,
         remainingLiters: 15000
@@ -73,10 +80,7 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         pressureBar: 6.5,
         specificEnergy: 0.7
       },
-      supplyDemand: {
-        currentDemand: 120,
-        currentSupply: 120
-      },
+      supplyDemand: buildSupplyDemand(100),
       backupData: {
         utilization: 65,
         remainingLiters: 8000
@@ -111,10 +115,7 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
         pressureBar: 5.5,
         specificEnergy: 0.7
       },
-      supplyDemand: {
-        currentDemand: 120,
-        currentSupply: 100
-      },
+      supplyDemand: buildSupplyDemand(80),
       backupData: {
         utilization: 40,
         remainingLiters: 3000
@@ -124,6 +125,6 @@ describe('ISO 13485 / ISO 14971 quality controls', () => {
     const coverageAlarm = alarms.find((alarm) => alarm.id.includes('coverage'));
 
     expect(coverageAlarm).toBeDefined();
-    expect(coverageAlarm.message).toMatch(/coverage (low|critical)/i);
+    expect(coverageAlarm.message).toMatch(/system (under stress|failure risk)/i);
   });
 });

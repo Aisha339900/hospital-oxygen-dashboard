@@ -413,22 +413,34 @@ function App() {
   const earliestPoint = data[0];
   const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
   const lastUpdated = formatTimestamp(status.timestamp);
+  const coveragePercent = (() => {
+    if (!supplyDemand?.supply) {
+      return null;
+    }
+    const coverage =
+      supplyDemand.supply.coveragePercent ??
+      supplyDemand.supply.coverage_percent;
+    if (coverage === null || coverage === undefined) {
+      return null;
+    }
+    const parsed = Number(coverage);
+    return Number.isFinite(parsed) ? parsed : null;
+  })();
+
   const supplyIsHealthy =
-    supplyDemand &&
-    parseFloat(supplyDemand.currentSupply) >=
-      parseFloat(supplyDemand.currentDemand);
+    coveragePercent !== null
+      ? coveragePercent >= 95
+      : Boolean(
+          (supplyDemand?.supply?.status || supplyDemand?.status || "")
+            .toLowerCase()
+            .includes("healthy"),
+        );
   const timelineRange =
     earliestPoint && latestPoint
       ? `${formatTimestamp(earliestPoint.timestamp)} - ${formatTimestamp(latestPoint.timestamp)}`
       : "No daily window";
-  const supplyFill = supplyDemand
-    ? Math.min(
-        (parseFloat(supplyDemand.currentSupply) /
-          parseFloat(supplyDemand.currentDemand)) *
-          100,
-        140,
-      )
-    : 0;
+  const supplyFill =
+    coveragePercent !== null ? Math.min(Math.max(coveragePercent, 0), 140) : 0;
   const canInlineLogPreview =
     !!logUpload &&
     (logUpload.type === "application/pdf" ||

@@ -3,5 +3,7 @@ export { alarmService } from "./alarmService";
 export { systemHealthService } from "./systemHealthService";
 export { historyService } from "./historyService";
 export { backupService } from "./backupService";
+export { demandStatusService } from "./demandStatusService";
+export { supplyStatusService } from "./supplyStatusService";
 export { authService } from "./authService";
 export { default as apiClient } from "./api";

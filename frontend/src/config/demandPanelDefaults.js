@@ -2,9 +2,20 @@
 const demandPanelDefaults = {
   /** Single plant-wide snapshot when API is offline (does not vary with stream selection). */
   systemDemandSupply: {
-    currentDemand: 83.7,
-    currentSupply: 56.7,
-    status: "Demand coverage below comfort band",
+    demand: {
+      totalRequests: 113,
+      generalRequests: 97,
+      icuRequests: 16,
+      status: "low",
+    },
+    supply: {
+      mainUtilizationPercent: 63.95,
+      mainRemainingLiters: 54081,
+      coveragePercent: 100,
+      status: "healthy",
+    },
+    status: "Supply aligned with demand",
+    forecast: "Demand coverage at 100%.",
   },
   /** Used for offline trend KPI “demand coverage” when not stream-specific. */
   offlineDemandCoveragePercent: 67.74,

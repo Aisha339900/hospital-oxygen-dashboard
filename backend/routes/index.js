@@ -7,6 +7,8 @@ const historyController = require("../controllers/historyController");
 const alarmController = require("../controllers/alarmController");
 const healthController = require("../controllers/healthController");
 const backupStatusController = require("../controllers/backupStatusController");
+const demandStatusController = require("../controllers/demandStatusController");
+const supplyStatusController = require("../controllers/supplyStatusController");
 
 // Stream routes
 router.get("/streams", streamController.getAllStreams);
@@ -49,6 +51,26 @@ router.get(
 router.get(
   "/backup-status/all",
   backupStatusController.getAllBackupStatuses,
+);
+
+// Demand status routes
+router.get(
+  "/demand-status",
+  demandStatusController.getDemandStatusByScenario,
+);
+router.get(
+  "/demand-status/all",
+  demandStatusController.getAllDemandStatuses,
+);
+
+// Supply status routes
+router.get(
+  "/supply-status",
+  supplyStatusController.getSupplyStatusByScenario,
+);
+router.get(
+  "/supply-status/all",
+  supplyStatusController.getAllSupplyStatuses,
 );
 
 // System health routes

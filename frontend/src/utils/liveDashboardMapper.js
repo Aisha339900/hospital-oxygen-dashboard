@@ -8,6 +8,8 @@ import {
   alarmService,
   systemHealthService,
   backupService,
+  demandStatusService,
+  supplyStatusService,
 } from "../services";
 import backupPanelDefaults from "../config/backupPanelDefaults.js";
 
@@ -141,6 +143,96 @@ const SEVERITY_BADGE = {
 
 const buildBackupFallback = () => null;
 
+const toFiniteNumber = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const summarizeCoverageStatus = (coveragePercent, fallbackStatus) => {
+  if (fallbackStatus && typeof fallbackStatus === "string") {
+    return fallbackStatus;
+  }
+  if (coveragePercent === null) {
+    return "Coverage unavailable";
+  }
+  if (coveragePercent >= 95) {
+    return "Supply aligned with demand";
+  }
+  if (coveragePercent >= 70) {
+    return "System under stress";
+  }
+  return "System failure risk";
+};
+
+const formatForecastLine = (coveragePercent) => {
+  if (coveragePercent === null) {
+    return "Awaiting live demand and supply data";
+  }
+  return `Demand coverage at ${coveragePercent.toFixed(0)}%.`;
+};
+
+export function mapScenarioDemandSupply(demandStatus, supplyStatus) {
+  if (!demandStatus && !supplyStatus) {
+    return null;
+  }
+
+  const generalRequests = toFiniteNumber(demandStatus?.general_requests);
+  const icuRequests = toFiniteNumber(demandStatus?.icu_requests);
+  const totalRequests =
+    generalRequests !== null || icuRequests !== null
+      ? (generalRequests ?? 0) + (icuRequests ?? 0)
+      : null;
+  const demand = demandStatus
+    ? {
+        scenario: demandStatus.scenario,
+        status: demandStatus.status,
+        generalRequests,
+        general_requests: generalRequests,
+        icuRequests,
+        icu_requests: icuRequests,
+        totalRequests,
+        total_requests: totalRequests,
+        generalWip: toFiniteNumber(demandStatus.general_wip),
+        general_wip: toFiniteNumber(demandStatus.general_wip),
+        icuWip: toFiniteNumber(demandStatus.icu_wip),
+        icu_wip: toFiniteNumber(demandStatus.icu_wip),
+      }
+    : null;
+
+  const mainUtilization = toFiniteNumber(
+    supplyStatus?.main_utilization_percent,
+  );
+  const remainingLiters = toFiniteNumber(
+    supplyStatus?.main_remaining_liters,
+  );
+  const coveragePercent = toFiniteNumber(supplyStatus?.coverage_percent);
+  const supply = supplyStatus
+    ? {
+        scenario: supplyStatus.scenario,
+        status: supplyStatus.status,
+        mainUtilizationPercent: mainUtilization,
+        main_utilization_percent: mainUtilization,
+        mainRemainingLiters: remainingLiters,
+        main_remaining_liters: remainingLiters,
+        coveragePercent,
+        coverage_percent: coveragePercent,
+      }
+    : null;
+
+  return {
+    demand,
+    supply,
+    status: summarizeCoverageStatus(
+      coveragePercent,
+      supplyStatus?.status || demandStatus?.status,
+    ),
+    forecast: formatForecastLine(coveragePercent),
+  };
+}
+
 export function mapDbAlarmToPanel(a) {
   if (!a) return null;
   const msg = `${(a.alarm_type || "alarm").replace(/_/g, " ")} — measured ${a.measured_value ?? "n/a"}`;
@@ -190,22 +282,6 @@ export function mapBackupStatusToPanel(payload) {
   };
 }
 
-/** Simple demand panel from live flow + coverage when no dedicated supply API exists. */
-export function mapMeasurementToDemandPanel(m) {
-  if (!m) return null;
-  const flow = Number(m.flow_rate_m3h ?? 0);
-  const cov = Number(m.demand_coverage_percent ?? 0);
-  const supply = flow * (cov / 100);
-  return {
-    currentDemand: flow.toFixed(1),
-    currentSupply: supply.toFixed(1),
-    status:
-      cov >= 95
-        ? "Supply aligned with demand"
-        : "Demand coverage below comfort band",
-    forecast: "Derived from live measurement snapshot",
-  };
-}
 
 export function trendPointsFromMeasurement(m) {
   if (!m) return [];
@@ -233,6 +309,7 @@ export function trendPointsFromMeasurement(m) {
  * (caller falls back to client-side mock generators).
  */
 export async function loadLiveDashboard() {
+  const preferredScenario = backupPanelDefaults?.defaultScenario ?? "normal";
   let current = null;
   try {
     current = await measurementService.getCurrentMeasurements();
@@ -267,7 +344,19 @@ export async function loadLiveDashboard() {
       ? mapTrendPointToStatus(merged[merged.length - 1])
       : null;
 
-  const supplyDemand = mapMeasurementToDemandPanel(current);
+  let demandStatus = null;
+  let supplyStatus = null;
+  try {
+    [demandStatus, supplyStatus] = await Promise.all([
+      demandStatusService.getDemandStatus(preferredScenario),
+      supplyStatusService.getSupplyStatus(preferredScenario),
+    ]);
+  } catch {
+    demandStatus = null;
+    supplyStatus = null;
+  }
+
+  const supplyDemand = mapScenarioDemandSupply(demandStatus, supplyStatus);
 
   let storageLevels = mapStorageMonthlyPayload(storage);
   if (storageLevels.length === 0 && current) {
@@ -286,7 +375,6 @@ export async function loadLiveDashboard() {
   }
 
   let backup = null;
-  const preferredScenario = backupPanelDefaults?.defaultScenario;
   try {
     const backupPayload = await backupService.getBackupStatus(
       preferredScenario,

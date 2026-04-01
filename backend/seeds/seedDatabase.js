@@ -8,6 +8,8 @@ const MeasurementHistory = require("../models/measurementHistory");
 const Alarm = require("../models/alarm");
 const SystemHealth = require("../models/systemHealth");
 const BackupStatus = require("../models/backupStatus");
+const DemandStatus = require("../models/demandStatus");
+const SupplyStatus = require("../models/supplyStatus");
 
 const { generateDummyMeasurements } = require("../utils/dataGenerator");
 
@@ -22,6 +24,8 @@ const seedDatabase = async () => {
     await Alarm.deleteMany({});
     await SystemHealth.deleteMany({});
     await BackupStatus.deleteMany({});
+    await DemandStatus.deleteMany({});
+    await SupplyStatus.deleteMany({});
 
     console.log("Cleared existing data");
 
@@ -112,6 +116,61 @@ const seedDatabase = async () => {
     });
 
     console.log("Created backup status data");
+
+    await DemandStatus.insertMany([
+      {
+        scenario: "normal",
+        general_requests: 97,
+        icu_requests: 16,
+        general_wip: 7.53,
+        icu_wip: 3.07,
+        status: "low",
+      },
+      {
+        scenario: "peak",
+        general_requests: 153,
+        icu_requests: 31,
+        general_wip: 15.15,
+        icu_wip: 7.46,
+        status: "medium",
+      },
+      {
+        scenario: "catastrophic",
+        general_requests: 200,
+        icu_requests: 37,
+        general_wip: 27.24,
+        icu_wip: 12.34,
+        status: "high",
+      },
+    ]);
+
+    console.log("Created demand status data");
+
+    await SupplyStatus.insertMany([
+      {
+        scenario: "normal",
+        main_utilization_percent: 63.95,
+        main_remaining_liters: 54081.6,
+        coverage_percent: 100,
+        status: "healthy",
+      },
+      {
+        scenario: "peak",
+        main_utilization_percent: 100,
+        main_remaining_liters: 0,
+        coverage_percent: 100,
+        status: "high_load",
+      },
+      {
+        scenario: "catastrophic",
+        main_utilization_percent: 100,
+        main_remaining_liters: 0,
+        coverage_percent: 67.93,
+        status: "failure",
+      },
+    ]);
+
+    console.log("Created supply status data");
 
     console.log("Database seeded successfully!");
     process.exit(0);
