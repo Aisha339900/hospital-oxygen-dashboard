@@ -5,7 +5,7 @@ import { rechartsAxisTickProps, rechartsTooltipContentStyle } from '../../config
 
 function StorageComparisonPanel({ storageLevels, detailPayload, onOpenDetails, chartConfig = {} }) {
   const title = chartConfig.panelTitle || 'Storage Level by Month';
-  const subtitle = chartConfig.panelSubtitle || 'Last month vs this month';
+  const subtitle = chartConfig.panelSubtitle || 'Six-month trend (monthly averages)';
   const infoLabel = chartConfig.infoLabel || 'Info about storage level by month';
   const openLabel = chartConfig.openLabel || 'Open detailed monthly storage data';
   const description = chartConfig.detailDescription || detailPayload?.description;
@@ -57,6 +57,10 @@ function StorageComparisonPanel({ storageLevels, detailPayload, onOpenDetails, c
             axisLine={false}
             stroke="var(--chart-axis)"
             tick={rechartsAxisTickProps}
+            interval={0}
+            angle={-18}
+            textAnchor="end"
+            height={56}
           />
           <YAxis hide domain={[0, 100]} />
           <Tooltip contentStyle={rechartsTooltipContentStyle} />

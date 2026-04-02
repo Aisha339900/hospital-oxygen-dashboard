@@ -72,46 +72,76 @@ exports.getPressureTrend = async (req, res) => {
   }
 };
 
-// Get storage level monthly comparison
+/**
+ * One row per calendar month (last N months, oldest → newest).
+ * X-axis: full month names (February, March, April, …).
+ * lastMonth = previous calendar month’s average storage; thisMonth = that row’s month average.
+ */
 exports.getStorageLevelMonthly = async (req, res) => {
   try {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+    const raw = parseInt(req.query.months, 10);
+    const monthCount = Number.isFinite(raw) && raw >= 2 && raw <= 12 ? raw : 6;
 
-    // Get current month data
-    const currentMonthStart = new Date(currentYear, currentMonth, 1);
-    const currentMonthEnd = new Date(currentYear, currentMonth + 1, 1);
+    const now = new Date();
+    const cy = now.getUTCFullYear();
+    const cm = now.getUTCMonth();
 
-    // Get last month data
-    const lastMonthStart = new Date(currentYear, currentMonth - 1, 1);
-    const lastMonthEnd = new Date(currentYear, currentMonth, 1);
+    const rangeStart = new Date(Date.UTC(cy, cm - monthCount, 1));
+    const rangeEnd = new Date(Date.UTC(cy, cm + 1, 1));
 
-    const currentMonthData = await MeasurementHistory.find({
-      date: {
-        $gte: currentMonthStart,
-        $lt: currentMonthEnd,
-      },
-    }).sort({ date: 1 });
+    const docs = await MeasurementHistory.find({
+      date: { $gte: rangeStart, $lt: rangeEnd },
+    }).lean();
 
-    const lastMonthData = await MeasurementHistory.find({
-      date: {
-        $gte: lastMonthStart,
-        $lt: lastMonthEnd,
-      },
-    }).sort({ date: 1 });
+    const bucketKey = (y, m) => `${y}-${m}`;
+    const buckets = new Map();
+
+    for (const d of docs) {
+      const dt = new Date(d.date);
+      const key = bucketKey(dt.getUTCFullYear(), dt.getUTCMonth());
+      if (!buckets.has(key)) {
+        buckets.set(key, { sum: 0, n: 0 });
+      }
+      const b = buckets.get(key);
+      const v = d.measurements?.storage_level?.value;
+      if (typeof v === "number" && !Number.isNaN(v)) {
+        b.sum += v;
+        b.n += 1;
+      }
+    }
+
+    const avgFor = (y, m) => {
+      const b = buckets.get(bucketKey(y, m));
+      if (!b || b.n === 0) {
+        return null;
+      }
+      return b.sum / b.n;
+    };
+
+    const data = [];
+    for (let i = monthCount - 1; i >= 0; i--) {
+      const monthStart = new Date(Date.UTC(cy, cm - i, 1));
+      const y = monthStart.getUTCFullYear();
+      const m = monthStart.getUTCMonth();
+      const prevStart = new Date(Date.UTC(cy, cm - i - 1, 1));
+
+      const py = prevStart.getUTCFullYear();
+      const pm = prevStart.getUTCMonth();
+
+      const thisAvg = avgFor(y, m);
+      const prevAvg = avgFor(py, pm);
+
+      data.push({
+        monthStart: monthStart.toISOString(),
+        lastMonth: prevAvg ?? 0,
+        thisMonth: thisAvg ?? 0,
+      });
+    }
 
     res.json({
       metric: "storage_level",
       period: "monthly_comparison",
-      lastMonth: lastMonthData.map((d) => ({
-        date: d.date,
-        value: d.measurements.storage_level.value,
-      })),
-      thisMonth: currentMonthData.map((d) => ({
-        date: d.date,
-        value: d.measurements.storage_level.value,
-      })),
+      data,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

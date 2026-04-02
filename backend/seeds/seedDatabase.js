@@ -11,7 +11,10 @@ const BackupStatus = require("../models/backupStatus");
 const DemandStatus = require("../models/demandStatus");
 const SupplyStatus = require("../models/supplyStatus");
 
-const { generateDummyMeasurements } = require("../utils/dataGenerator");
+const {
+  generateDummyMeasurements,
+  generateSystemMeasurementSnapshots,
+} = require("../utils/dataGenerator");
 
 const seedDatabase = async () => {
   try {
@@ -29,7 +32,7 @@ const seedDatabase = async () => {
 
     console.log("Cleared existing data");
 
-    // Seed Streams (from your PDF data)
+    // Seed Streams 
     const membraneStream = await Stream.create({
       name: "Membrane Permeate",
       type: "permeate",
@@ -48,25 +51,19 @@ const seedDatabase = async () => {
 
     console.log("Created stream data");
 
-    // Seed System Measurements (current + historical)
-    const currentMeasurement = await SystemMeasurement.create({
-      timestamp: new Date(),
-      oxygen_purity_percent: 43.7,
-      flow_rate_m3h: 56.65,
-      delivery_pressure_bar: 36.01,
-      demand_coverage_percent: 67.74,
-      storage_level_percent: 75.0,
-      temperature: 25.0,
-      data_source: "dummy",
-    });
+    // Seed system measurement snapshots (latest by timestamp is "current"; includes storage % for charts)
+    const snapshots = generateSystemMeasurementSnapshots(72, 1);
+    await SystemMeasurement.insertMany(snapshots);
 
-    console.log("Created current measurement");
+    console.log(
+      `Created ${snapshots.length} system measurement snapshots (daily, last ${snapshots.length})`,
+    );
 
     // Seed historical data
     const historyData = generateDummyMeasurements(14);
     await MeasurementHistory.insertMany(historyData);
 
-    console.log("Created 14 days of historical data");
+    console.log(`Created ${historyData.length} days of historical data`);
 
     // Seed Alarms
     const alarms = await Alarm.insertMany([

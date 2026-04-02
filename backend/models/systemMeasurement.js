@@ -19,22 +19,14 @@ const systemMeasurementSchema = new mongoose.Schema({
     type: Number,
     min: 0,
   },
-  demand_coverage_percent: {
-    type: Number,
-    min: 0,
-    max: 100,
-  },
   storage_level_percent: {
     type: Number,
     min: 0,
     max: 100,
   },
-  temperature: {
-    type: Number,
-  },
   data_source: {
     type: String,
-    enum: ["real_sensor", "dummy", "simulated"],
+    enum: [ "dummy", "simulated"],
     default: "dummy",
   },
   createdAt: {

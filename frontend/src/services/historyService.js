@@ -18,7 +18,9 @@ export const historyService = {
   },
 
   getStorageLevelMonthly: async () => {
-    const { data } = await apiClient.get("/history/storage-monthly");
+    const { data } = await apiClient.get("/history/storage-monthly", {
+      params: { months: 6 },
+    });
     return data;
   },
 };

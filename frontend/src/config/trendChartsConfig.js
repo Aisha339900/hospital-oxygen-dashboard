@@ -18,7 +18,7 @@ const trendCharts = {
   storage: {
     id: "storage",
     panelTitle: "Storage Level by Month",
-    panelSubtitle: "Last month vs this month",
+    panelSubtitle: "Six-month trend (monthly averages)",
     infoLabel: "Info about storage level by month",
     openLabel: "Open detailed monthly storage data",
     detailTitle: "Storage Level by Month",
