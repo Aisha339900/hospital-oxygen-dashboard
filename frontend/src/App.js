@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  FiActivity,
   FiBarChart2,
   FiTrendingUp,
   FiBell,
@@ -14,10 +13,13 @@ import Sidebar from "./components/Sidebar";
 import DashboardPage from "./pages/DashboardPage";
 import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
+import SimulationDesignPage from "./pages/SimulationDesignPage";
+import AuthPage from "./pages/AuthPage";
 import DetailModal from "./components/DetailModal";
 import ChatWidget from "./components/ChatWidget";
 import KPI_DEFINITIONS from "./config/kpiDefinitions.js";
 import TREND_CHARTS from "./config/trendChartsConfig.js";
+import { isAuthEnabled } from "./config/auth.js";
 import { loadLiveDashboard } from "./utils/liveDashboardMapper.js";
 import { streamsAPI } from "./services";
 import "./App.css";
@@ -90,6 +92,7 @@ const DEFAULT_SETTINGS = {
   emailAlerts: true,
 };
 
+const AUTH_STORAGE_KEY = "oxygen.auth.v1";
 const DEFAULT_LOG_ASSET_PATH = `${process.env.PUBLIC_URL || ""}/data-results.pdf`;
 const DEFAULT_LOG_METADATA = {
   name: "Data Results.pdf",
@@ -122,6 +125,40 @@ function readInitialIsDark() {
   }
 }
 
+function readInitialAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && parsed.email) {
+        return {
+          email: parsed.email,
+          name: typeof parsed.name === "string" ? parsed.name : null,
+          role: typeof parsed.role === "string" ? parsed.role : null,
+          createdAt:
+            typeof parsed.createdAt === "number" ? parsed.createdAt : null,
+        };
+      }
+    }
+    const token = localStorage.getItem("authToken");
+    const userRaw = localStorage.getItem("user");
+    if (token && userRaw) {
+      const u = JSON.parse(userRaw);
+      if (u && typeof u.email === "string" && u.email) {
+        return {
+          email: u.email,
+          name: typeof u.name === "string" ? u.name : null,
+          role: typeof u.role === "string" ? u.role : null,
+          createdAt: null,
+        };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function App() {
   const [status, setStatus] = useState(null);
   const [data, setData] = useState([]);
@@ -136,9 +173,12 @@ function App() {
   const [activeStream, setActiveStream] = useState("");
   const [detailView, setDetailView] = useState(null);
   const [activeView, setActiveView] = useState("Default");
+  const [simulationEntry, setSimulationEntry] = useState(null);
   const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
   const [backupPanelPulse, setBackupPanelPulse] = useState(false);
   const [demandPanelPulse, setDemandPanelPulse] = useState(false);
+  const [apiResolved] = useState(false);
+  const [useLiveApi] = useState(false);
   const [logUpload, setLogUpload] = useState(() => ({
     ...DEFAULT_LOG_METADATA,
   }));
@@ -146,9 +186,22 @@ function App() {
   const [settings, setSettings] = useState({ ...DEFAULT_SETTINGS });
   const [isDarkMode, setIsDarkMode] = useState(readInitialIsDark);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [auth, setAuth] = useState(readInitialAuth);
   const alarmPulseTimeoutRef = useRef(null);
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
+
+  const persistAuth = useCallback((nextAuth) => {
+    try {
+      if (!nextAuth) {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        return;
+      }
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
+    } catch {
+      // ignore localStorage failures (private mode, quota, etc.)
+    }
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setIsDarkMode((d) => {
@@ -159,6 +212,17 @@ function App() {
   }, []);
 
   const closeMobileSidebar = useCallback(() => setSidebarMobileOpen(false), []);
+
+  const handleOpenSimulationEntry = useCallback((mode) => {
+    setSimulationEntry(mode);
+    setActiveView("Simulation design");
+  }, []);
+
+  const handleSimulationDesignFromSidebar = useCallback(() => {
+    setSimulationEntry("training");
+    setActiveView("Simulation design");
+    closeMobileSidebar();
+  }, [closeMobileSidebar]);
 
   const closeDetails = useCallback(() => setDetailView(null), []);
 
@@ -339,6 +403,34 @@ function App() {
   const toggleSetting = (key) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+  const handleAuthSuccess = useCallback(
+    (payload) => {
+      const nextAuth = {
+        email: payload.email,
+        name: payload.name || null,
+        role: payload.role ?? null,
+        createdAt:
+          typeof payload.createdAt === "number" ? payload.createdAt : Date.now(),
+      };
+      setAuth(nextAuth);
+      persistAuth(nextAuth);
+    },
+    [persistAuth],
+  );
+
+  const handleSignOut = useCallback(() => {
+    try {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+    } catch {
+      /* ignore */
+    }
+    setAuth(null);
+    persistAuth(null);
+  }, [persistAuth]);
+
+  const authRequired = isAuthEnabled() && !auth;
+
 
   if (loading) {
     return <div className="loading">Loading dashboard...</div>;
@@ -593,8 +685,9 @@ function App() {
       title: "Pages",
       items: [
         { label: "Logs", icon: FiFileText },
+        { label: "Simulation Design", icon: FiLayers },
         { label: "Settings", icon: FiSettings },
-        { label: "System Info", icon: FiActivity },
+        
       ],
     },
   ];
@@ -664,6 +757,7 @@ function App() {
   const handleDashboardSelection = (label) => {
     closeMobileSidebar();
     if (viewableDashboards.has(label)) {
+      setSimulationEntry(null);
       setActiveView(label);
     }
     const handler = dashboardPulseHandlers[label];
@@ -679,14 +773,17 @@ function App() {
   };
   const isLogsView = activeView === "Logs";
   const isSettingsView = activeView === "Settings";
+  const isSimulationView = activeView === "Simulation design";
+  const trendsAreSimulated = apiResolved && !useLiveApi;
 
   return (
     <>
-      <div className="app-shell">
-        <a href="#main-content" className="skip-link">
+  <div className={`app-shell ${authRequired ? "auth-locked" : ""}`}>
+            <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <div className="app-grid">
+        <div className="app-shell__content">
+          <div className="app-grid">
           <button
             type="button"
             className="sidebar-menu-toggle"
@@ -714,13 +811,16 @@ function App() {
             viewableDashboards={viewableDashboards}
             onDashboardSelect={handleDashboardSelection}
             onLogsSelect={() => {
+              setSimulationEntry(null);
               setActiveView("Logs");
               closeMobileSidebar();
             }}
             onSettingsSelect={() => {
+              setSimulationEntry(null);
               setActiveView("Settings");
               closeMobileSidebar();
             }}
+            onSimulationDesignSelect={handleSimulationDesignFromSidebar}
             isDarkMode={isDarkMode}
             onToggleTheme={toggleTheme}
           />
@@ -728,7 +828,7 @@ function App() {
           <main
             id="main-content"
             tabIndex={-1}
-            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""}`}
+            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isSimulationView ? "simulation-mode" : ""}`}
           >
             {isLogsView ? (
               <LogsPage
@@ -744,8 +844,18 @@ function App() {
                 <SettingsPage
                   settings={settings}
                   onToggleSetting={toggleSetting}
+                  onSignOut={handleSignOut}
+                  authEmail={auth?.email || null}
+                  authName={auth?.name || null}
+                  authRole={auth?.role || null}
                 />
               </div>
+               ) : isSimulationView ? (
+                <SimulationDesignPage
+                  isDarkMode={isDarkMode}
+                  onToggleTheme={toggleTheme}
+                  entryMode={simulationEntry}
+                />
             ) : (
               <DashboardPage
                 statCards={statCards}
@@ -771,13 +881,25 @@ function App() {
                 currentStreamLabel={currentStreamProfile?.label || "-"}
                 currentStreamProcess={currentStreamProcess}
                 trendChartConfig={TREND_CHARTS}
+                trendsAreSimulated={trendsAreSimulated}
                 isDarkMode={isDarkMode}
                 onToggleTheme={toggleTheme}
+                onOpenSimulationEntry={handleOpenSimulationEntry}
+
               />
             )}
           </main>
         </div>
+        </div>
       </div>
+      {authRequired ? (
+        <AuthPage
+          variant="modal"
+          isDarkMode={isDarkMode}
+          onToggleTheme={toggleTheme}
+          onAuthSuccess={handleAuthSuccess}
+        />
+      ) : null}
       <DetailModal detailView={detailView} onClose={closeDetails} />
       <ChatWidget webhookUrl={process.env.REACT_APP_N8N_CHAT_WEBHOOK} />
     </>

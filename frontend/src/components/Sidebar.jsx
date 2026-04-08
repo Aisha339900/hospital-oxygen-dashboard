@@ -9,6 +9,7 @@ function Sidebar({
 	onDashboardSelect,
 	onLogsSelect,
 	onSettingsSelect,
+	onSimulationDesignSelect,
 	isDarkMode,
 	onToggleTheme,
 }) {
@@ -48,10 +49,18 @@ function Sidebar({
 								const isPagesSection = section.title === 'Pages';
 								const isLogsShortcut = isPagesSection && item.label === 'Logs';
 								const isSettingsShortcut = isPagesSection && item.label === 'Settings';
+								const isSimulationShortcut = isPagesSection && item.label === 'Simulation Design';
 								const isActiveItem =
-									(isDashboardSection || isLogsShortcut || isSettingsShortcut) && item.label === activeView;
-								const isSelectable =
-									(isDashboardSection && viewableDashboards.has(item.label)) || isLogsShortcut || isSettingsShortcut;
+								(isDashboardSection ||
+									isLogsShortcut ||
+									isSettingsShortcut ||
+									isSimulationShortcut) &&
+								item.label === activeView;
+							const isSelectable =
+								(isDashboardSection && viewableDashboards.has(item.label)) ||
+								isLogsShortcut ||
+								isSettingsShortcut ||
+								isSimulationShortcut;
 								const classNames = [isActiveItem ? 'active' : '', isSelectable ? 'actionable' : '']
 									.filter(Boolean)
 									.join(' ');
@@ -61,6 +70,8 @@ function Sidebar({
 									? onLogsSelect
 									: isSettingsShortcut
 									? onSettingsSelect
+									: isSimulationShortcut
+									? onSimulationDesignSelect
 									: undefined;
 								return (
 									<li

@@ -8,6 +8,7 @@ import AlertsPanel from '../components/rightRail/AlertsPanel';
 import BackupPanel from '../components/rightRail/BackupPanel';
 import DemandPanel from '../components/rightRail/DemandPanel';
 
+
 function DashboardPage({
   statCards,
   detailPayloads,
@@ -34,6 +35,7 @@ function DashboardPage({
   trendChartConfig = {},
   isDarkMode,
   onToggleTheme,
+  onOpenSimulationEntry,
 }) {
   return (
     <>

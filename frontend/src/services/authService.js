@@ -26,6 +26,10 @@ export const authService = {
   register: async (userData) => {
     try {
       const response = await apiClient.post("/auth/register", userData);
+      if (response.data.token) {
+        localStorage.setItem("authToken", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+      }
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

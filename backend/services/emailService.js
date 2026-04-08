@@ -1,0 +1,81 @@
+const nodemailer = require("nodemailer");
+
+function isSmtpConfigured() {
+  return Boolean(
+    process.env.SMTP_HOST &&
+      process.env.SMTP_USER &&
+      process.env.SMTP_PASS,
+  );
+}
+
+function createTransporter() {
+  if (!isSmtpConfigured()) return null;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure =
+    process.env.SMTP_SECURE === "true" || port === 465;
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
+const APP_NAME = process.env.EMAIL_APP_NAME || "Oxygen Dashboard";
+
+/**
+ * @param {{ to: string; resetLink: string }} params
+ */
+async function sendPasswordResetEmail({ to, resetLink }) {
+  const transporter = createTransporter();
+  if (!transporter) {
+    throw new Error("SMTP is not configured.");
+  }
+
+  const from =
+    process.env.EMAIL_FROM ||
+    process.env.SMTP_FROM ||
+    `"${APP_NAME}" <${process.env.SMTP_USER}>`;
+
+  const subject = `Reset your ${APP_NAME} password`;
+
+  const text = [
+    `You asked to reset your password for ${APP_NAME}.`,
+    "",
+    `Open this link (valid for one hour):`,
+    resetLink,
+    "",
+    `If you did not request this, you can ignore this email.`,
+  ].join("\n");
+
+  const html = `
+    <p>You asked to reset your password for <strong>${escapeHtml(APP_NAME)}</strong>.</p>
+    <p><a href="${escapeHtml(resetLink)}">Reset your password</a></p>
+    <p style="color:#64748b;font-size:13px;">This link expires in one hour. If you did not request a reset, you can ignore this email.</p>
+  `;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+    html,
+  });
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+module.exports = {
+  isSmtpConfigured,
+  createTransporter,
+  sendPasswordResetEmail,
+};

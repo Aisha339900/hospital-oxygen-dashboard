@@ -32,10 +32,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear auth and redirect to login
       localStorage.removeItem("authToken");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+      localStorage.removeItem("oxygen.auth.v1");
+      window.location.href = "/";
     }
     return Promise.reject(error);
   },

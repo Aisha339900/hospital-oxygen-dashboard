@@ -1,10 +1,20 @@
 import React from 'react';
 import { FiBell, FiUser, FiLogOut } from 'react-icons/fi';
 
-function SettingsPage({ settings, onToggleSetting }) {
-  const handleSignOut = () => {
-    window.alert('Signed out');
-  };
+function roleLabel(role) {
+  if (role === "admin") return "Administrator";
+  if (role === "user") return "Operator";
+  return role || "—";
+}
+
+function SettingsPage({
+  settings,
+  onToggleSetting,
+  onSignOut,
+  authEmail,
+  authName,
+  authRole,
+}) {
 
   return (
     <section className="settings-shell">
@@ -28,11 +38,11 @@ function SettingsPage({ settings, onToggleSetting }) {
           <div className="settings-card-content">
             <dl className="settings-detail-list">
               <dt>Name</dt>
-              <dd>Riley Evans</dd>
+              <dd>{authName || "—"}</dd>
               <dt>Email</dt>
-              <dd>riley.evans@oxygen-ops.health</dd>
+              <dd>{authEmail || "—"}</dd>
               <dt>Role</dt>
-              <dd>Site administrator</dd>
+              <dd>{roleLabel(authRole)}</dd>
             </dl>
           </div>
         </article>
@@ -70,8 +80,8 @@ function SettingsPage({ settings, onToggleSetting }) {
             </div>
           </div>
           <div className="settings-card-content">
-            <button className="settings-signout" type="button" onClick={handleSignOut}>
-              Sign out
+          <button className="settings-signout" type="button" onClick={onSignOut}>
+          Sign out
             </button>
           </div>
         </article>
