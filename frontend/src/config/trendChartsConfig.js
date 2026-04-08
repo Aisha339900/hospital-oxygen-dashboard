@@ -1,74 +1,34 @@
 // Configuration for dashboard trend charts and their detail payload metadata.
 const trendCharts = {
-  purity: {
-    id: "purity",
-    panelTitle: "Daily Oxygen Purity",
-    panelSubtitle: "Last 14 days",
-    infoLabel: "Info about daily oxygen purity",
-    openLabel: "Open detailed daily purity data",
-    detailTitle: "Daily Oxygen Purity",
+  oxygenProductFlowVsFeedFlow: {
+    id: "oxygenProductFlowVsFeedFlow",
+    panelTitle: "Oxygen Product Flow vs Feed Flow",
+    panelSubtitle: "",
+    infoLabel: "Info about oxygen product flow versus feed flow",
+    openLabel: "Open oxygen product flow versus feed flow data",
+    detailTitle: "Oxygen Product Flow vs Feed Flow",
     detailDescription:
-      "Daily comparison between oxygen purity, flow rate, and pressure metrics for the latest reporting window.",
+      "Shows how oxygen output changes with feed flow. Used to control supply and understand system capacity.",
     detailMeta: [
-      { label: "Date range", source: "timelineRange" },
-      { label: "Data points", source: "dataLength" },
+      { label: "Data points", source: "trendDataLength" },
+      { label: "Feed flow range", source: "trendFeedRange" },
     ],
-    dataset: { source: "data", limit: 8 },
+    dataset: { source: "trendData" },
   },
-  storage: {
-    id: "storage",
-    panelTitle: "Storage Level by Month",
-    panelSubtitle: "Last month vs this month",
-    infoLabel: "Info about storage level by month",
-    openLabel: "Open detailed monthly storage data",
-    detailTitle: "Storage Level by Month",
+  oxygenPurityVsFeedFlow: {
+    id: "oxygenPurityVsFeedFlow",
+    panelTitle: "Oxygen Purity vs Feed Flow",
+    panelSubtitle: "",
+    infoLabel: "Info about oxygen purity versus feed flow",
+    openLabel: "Open oxygen purity versus feed flow data",
+    detailTitle: "Oxygen Purity vs Feed Flow",
     detailDescription:
-      "Contrasts reserve storage levels month-over-month to highlight seasonal dips.",
+      "Shows how oxygen purity changes with feed. Ensures it stays within safe medical limits (93-99%).",
     detailMeta: [
-      { label: "Months tracked", source: "storageCount" },
-      { label: "Latest month", source: "storageLatestLabel" },
+      { label: "Data points", source: "trendDataLength" },
+      { label: "Feed flow range", source: "trendFeedRange" },
     ],
-    dataset: { source: "storageLevels" },
-  },
-  flow: {
-    id: "flow",
-    panelTitle: "Daily Flow Rate",
-    panelSubtitle: "Daily patient demand",
-    infoLabel: "Info about daily flow rate",
-    openLabel: "Open detailed daily flow rate data",
-    detailTitle: "Daily Flow Rate",
-    detailDescription:
-      "Highlights daily patient consumption trends and sudden surges in oxygen flow.",
-    detailMeta: [
-      {
-        label: "Latest reading",
-        source: "latestFlowRate",
-        precision: 1,
-        suffix: " m³/h",
-      },
-      { label: "Date range", source: "timelineRange" },
-    ],
-    dataset: { source: "data", map: "flowRate", limit: 8 },
-  },
-  pressure: {
-    id: "pressure",
-    panelTitle: "Daily Pressure Trend",
-    panelSubtitle: "Distribution manifold checks",
-    infoLabel: "Info about daily pressure trend",
-    openLabel: "Open detailed daily pressure data",
-    detailTitle: "Daily Pressure Trend",
-    detailDescription:
-      "Monitors distribution manifold pressure day over day to surface fluctuations before alarms fire.",
-    detailMeta: [
-      {
-        label: "Latest reading",
-        source: "latestPressure",
-        precision: 1,
-        suffix: " bar",
-      },
-      { label: "Date range", source: "timelineRange" },
-    ],
-    dataset: { source: "data", map: "pressure", limit: 8 },
+    dataset: { source: "trendData" },
   },
 };
 

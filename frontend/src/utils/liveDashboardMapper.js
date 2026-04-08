@@ -321,16 +321,22 @@ export async function loadLiveDashboard() {
   let flow = { data: [] };
   let pressure = { data: [] };
   let storage = { lastMonth: [], thisMonth: [] };
+  let trendDataPayload = { data: [] };
   try {
-    [purity, flow, pressure, storage] = await Promise.all([
+    [purity, flow, pressure, storage, trendDataPayload] = await Promise.all([
       historyService.getOxygenPurityTrend(),
       historyService.getFlowRateTrend(),
       historyService.getPressureTrend(),
       historyService.getStorageLevelMonthly(),
+      historyService.getTrendData(),
     ]);
   } catch {
     /* history optional */
   }
+
+  const trendData = Array.isArray(trendDataPayload?.data)
+    ? trendDataPayload.data
+    : [];
 
   const dc = Number(current?.demand_coverage_percent ?? 0);
   let merged = mergeHistoryTrendRows(purity, flow, pressure, dc);
@@ -415,6 +421,7 @@ export async function loadLiveDashboard() {
 
   return {
     data: merged,
+    trendData,
     status,
     storageLevels,
     alarms,

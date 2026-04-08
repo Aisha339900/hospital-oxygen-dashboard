@@ -125,6 +125,7 @@ function readInitialIsDark() {
 function App() {
   const [status, setStatus] = useState(null);
   const [data, setData] = useState([]);
+  const [trendData, setTrendData] = useState([]);
   const [alarms, setAlarms] = useState([]);
   const [backup, setBackup] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -229,6 +230,7 @@ function App() {
         setStreamProfiles(normalizedStreams);
         setActiveStream((prev) => prev || normalizedStreams[0].id);
         setData(live.data);
+        setTrendData(live.trendData || []);
         setStatus(live.status);
         setStorageLevels(live.storageLevels);
         setAlarms(live.alarms);
@@ -388,6 +390,11 @@ function App() {
     earliestPoint && latestPoint
       ? `${formatTimestamp(earliestPoint.timestamp)} - ${formatTimestamp(latestPoint.timestamp)}`
       : "No daily window";
+  const trendFeedRange = trendData.length
+    ? `${Number(trendData[0].feed_flow_kmol_h).toFixed(2)} - ${Number(
+        trendData[trendData.length - 1].feed_flow_kmol_h,
+      ).toFixed(2)} kmol/h`
+    : "No trend window";
   const supplyFill =
     coveragePercent !== null ? Math.min(Math.max(coveragePercent, 0), 140) : 0;
   const canInlineLogPreview =
@@ -470,6 +477,10 @@ function App() {
         return latestPoint ? latestPoint.flowRate : null;
       case "latestPressure":
         return latestPoint ? latestPoint.pressure : null;
+      case "trendDataLength":
+        return trendData.length;
+      case "trendFeedRange":
+        return trendFeedRange;
       default:
         return null;
     }
@@ -500,6 +511,8 @@ function App() {
     let sourceData = [];
     if (datasetConfig.source === "storageLevels") {
       sourceData = storageLevels;
+    } else if (datasetConfig.source === "trendData") {
+      sourceData = trendData;
     } else {
       sourceData = data;
     }
@@ -523,14 +536,16 @@ function App() {
   const openDetails = (payload) => setDetailView(payload);
 
   const openMetricDetails = (card) => {
+    const meta = [{ label: "Current value", value: card.value }];
+    if (card.delta) {
+      meta.push({ label: "Trend delta", value: card.delta });
+    }
+    meta.push({ label: "Context", value: card.helper });
+
     openDetails({
       title: card.label,
       description: card.description,
-      meta: [
-        { label: "Current value", value: card.value },
-        { label: "Trend delta", value: card.delta },
-        { label: "Context", value: card.helper },
-      ],
+      meta,
     });
   };
 
@@ -617,10 +632,10 @@ function App() {
   }));
 
   const detailPayloads = {
-    purity: buildChartDetail("purity"),
-    storage: buildChartDetail("storage"),
-    flow: buildChartDetail("flow"),
-    pressure: buildChartDetail("pressure"),
+    oxygenProductFlowVsFeedFlow: buildChartDetail(
+      "oxygenProductFlowVsFeedFlow",
+    ),
+    oxygenPurityVsFeedFlow: buildChartDetail("oxygenPurityVsFeedFlow"),
   };
 
   const startPanelPulse = (setPulse, pulseRef) => {
@@ -737,9 +752,7 @@ function App() {
                 detailPayloads={detailPayloads}
                 openMetricDetails={openMetricDetails}
                 openChartDetails={openChartDetails}
-                data={data}
-                storageLevels={storageLevels}
-                formatTimestamp={formatTimestamp}
+                trendData={trendData}
                 alarms={alarms}
                 formatTimeAgo={formatTimeAgo}
                 backup={backup}

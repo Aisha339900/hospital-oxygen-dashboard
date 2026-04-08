@@ -36,6 +36,7 @@ router.get(
   "/history/storage-monthly",
   historyController.getStorageLevelMonthly,
 );
+router.get("/history/trend-data", historyController.getTrendData);
 
 // Alarm routes
 router.get("/alarms", alarmController.getAllAlarms);

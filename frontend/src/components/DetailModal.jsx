@@ -57,7 +57,9 @@ function DetailModal({ detailView, onClose }) {
         {detailView.description && <p className="detail-description">{detailView.description}</p>}
         {detailView.meta && (
           <dl className="detail-meta-grid">
-            {detailView.meta.map((item) => (
+            {detailView.meta
+              .filter((item) => item?.value !== null && item?.value !== undefined && item?.value !== "")
+              .map((item) => (
               <div key={item.label}>
                 <dt>{item.label}</dt>
                 <dd>{item.value}</dd>

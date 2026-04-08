@@ -11,7 +11,7 @@ const kpiDefinitions = [
     iconKey: "droplet",
     tone: "mint",
     description:
-      "Tracks delivered oxygen purity versus the regulatory baseline.",
+      "Indicates oxygen quality. Must stay within safe medical range (93-99%) to ensure patient safety.",
   },
   {
     id: "flowRate",
@@ -23,7 +23,8 @@ const kpiDefinitions = [
     helper: "vs previous stream",
     iconKey: "layers",
     tone: "amber",
-    description: "Measures total oxygen throughput per hour across wards.",
+    description:
+      "Shows oxygen production rate. Used to verify the system meets hospital demand.",
   },
   {
     id: "pressure",
@@ -36,7 +37,7 @@ const kpiDefinitions = [
     iconKey: "target",
     tone: "rose",
     description:
-      "Shows manifold pressure stability at the main distribution header.",
+      "Must remain stable (4-6 bar) for safe and reliable supply.",
   },
   {
     id: "coverage",
@@ -49,7 +50,7 @@ const kpiDefinitions = [
     iconKey: "trendingUp",
     tone: "gold",
     description:
-      "Represents how much of current demand is secured by supply commitments.",
+      "Shows what percentage of current oxygen demand is covered by available supply. 100% means demand is fully covered.",
   },
 ];
 

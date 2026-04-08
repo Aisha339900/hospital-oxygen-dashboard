@@ -21,4 +21,9 @@ export const historyService = {
     const { data } = await apiClient.get("/history/storage-monthly");
     return data;
   },
+
+  getTrendData: async () => {
+    const { data } = await apiClient.get("/history/trend-data");
+    return data;
+  },
 };

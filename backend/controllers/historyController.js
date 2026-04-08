@@ -1,4 +1,16 @@
 const MeasurementHistory = require("../models/measurementHistory");
+const mongoose = require("mongoose");
+
+const TREND_DB_NAME = "hospital-oxygen-dashboard";
+const TREND_COLLECTION = "trend_data";
+
+const toNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 // Get last 14 days of oxygen purity
 exports.getOxygenPurityTrend = async (req, res) => {
@@ -112,6 +124,51 @@ exports.getStorageLevelMonthly = async (req, res) => {
         date: d.date,
         value: d.measurements.storage_level.value,
       })),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get trend chart points from hospital-oxygen-dashboard.trend_data
+exports.getTrendData = async (req, res) => {
+  try {
+    const collection = mongoose
+      .connection
+      .useDb(TREND_DB_NAME)
+      .collection(TREND_COLLECTION);
+
+    const docs = await collection.find({}).sort({ _id: 1 }).toArray();
+    const data = docs
+      .map((doc) => {
+        const feedFlow = toNumberOrNull(
+          doc.feed_flow_kmol_h ?? doc.feed_kmol_h,
+        );
+        const productFlow = toNumberOrNull(
+          doc.product_flow_L_min ?? doc.flow_rate_L_min,
+        );
+        const oxygenPurityRaw = toNumberOrNull(
+          doc.oxygen_purity_percent ?? doc.o2_purity,
+        );
+        const oxygenPurityPercent =
+          oxygenPurityRaw === null
+            ? null
+            : oxygenPurityRaw <= 1
+              ? Number((oxygenPurityRaw * 100).toFixed(2))
+              : Number(oxygenPurityRaw.toFixed(2));
+
+        return {
+          feed_flow_kmol_h: feedFlow,
+          product_flow_L_min: productFlow,
+          oxygen_purity_percent: oxygenPurityPercent,
+        };
+      })
+      .filter((row) => row.feed_flow_kmol_h !== null)
+      .sort((a, b) => a.feed_flow_kmol_h - b.feed_flow_kmol_h);
+
+    res.json({
+      metric: "trend_data",
+      data,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

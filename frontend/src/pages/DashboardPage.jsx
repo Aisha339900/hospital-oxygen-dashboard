@@ -2,10 +2,8 @@ import React from 'react';
 import StatusHeader from '../components/dashboard/StatusHeader';
 import TodayRow from '../components/dashboard/TodayRow';
 import StatGrid from '../components/dashboard/StatGrid';
-import PurityOverviewPanel from '../components/charts/PurityOverviewPanel';
-import StorageComparisonPanel from '../components/charts/StorageComparisonPanel';
-import FlowRatePanel from '../components/charts/FlowRatePanel';
-import PressureTrendPanel from '../components/charts/PressureTrendPanel';
+import OxygenProductFlowVsFeedFlowPanel from '../components/charts/OxygenProductFlowVsFeedFlowPanel';
+import OxygenPurityVsFeedFlowPanel from '../components/charts/OxygenPurityVsFeedFlowPanel';
 import AlertsPanel from '../components/rightRail/AlertsPanel';
 import BackupPanel from '../components/rightRail/BackupPanel';
 import DemandPanel from '../components/rightRail/DemandPanel';
@@ -15,9 +13,7 @@ function DashboardPage({
   detailPayloads,
   openMetricDetails,
   openChartDetails,
-  data,
-  storageLevels,
-  formatTimestamp,
+  trendData,
   alarms,
   formatTimeAgo,
   backup,
@@ -61,36 +57,18 @@ function DashboardPage({
 
         <StatGrid statCards={statCards} openMetricDetails={openMetricDetails} />
 
-        <section className="panel-row primary">
-          <PurityOverviewPanel
-            data={data}
-            formatTimestamp={formatTimestamp}
-            detailPayload={detailPayloads.purity}
-            onOpenDetails={openChartDetails}
-            chartConfig={trendChartConfig?.purity}
-          />
-          <StorageComparisonPanel
-            storageLevels={storageLevels}
-            detailPayload={detailPayloads.storage}
-            onOpenDetails={openChartDetails}
-            chartConfig={trendChartConfig?.storage}
-          />
-        </section>
-
         <section className="panel-row">
-          <FlowRatePanel
-            data={data}
-            formatTimestamp={formatTimestamp}
-            detailPayload={detailPayloads.flow}
+          <OxygenProductFlowVsFeedFlowPanel
+            data={trendData}
+            detailPayload={detailPayloads.oxygenProductFlowVsFeedFlow}
             onOpenDetails={openChartDetails}
-            chartConfig={trendChartConfig?.flow}
+            chartConfig={trendChartConfig?.oxygenProductFlowVsFeedFlow}
           />
-          <PressureTrendPanel
-            data={data}
-            formatTimestamp={formatTimestamp}
-            detailPayload={detailPayloads.pressure}
+          <OxygenPurityVsFeedFlowPanel
+            data={trendData}
+            detailPayload={detailPayloads.oxygenPurityVsFeedFlow}
             onOpenDetails={openChartDetails}
-            chartConfig={trendChartConfig?.pressure}
+            chartConfig={trendChartConfig?.oxygenPurityVsFeedFlow}
           />
         </section>
       </div>
