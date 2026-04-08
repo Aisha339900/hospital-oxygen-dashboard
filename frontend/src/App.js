@@ -18,78 +18,64 @@ import DetailModal from "./components/DetailModal";
 import ChatWidget from "./components/ChatWidget";
 import KPI_DEFINITIONS from "./config/kpiDefinitions.js";
 import TREND_CHARTS from "./config/trendChartsConfig.js";
-import STREAM_PRESETS from "./config/streamPresets.js";
-import STREAM_COMPOSITIONS from "./config/streamCompositions.js";
-import STREAM_CONTROLS from "./config/streamControlsData.js";
-import {
-  generateGlobalTrendSeries,
-  generateGlobalStorageComparison,
-  generateStreamStatus,
-  generateBackupPanelData,
-  getStaticSystemDemandSupply,
-} from "./utils/mockGenerators.js";
-import { generateAlarmPanelData } from "./utils/alarmLogic.js";
 import { loadLiveDashboard } from "./utils/liveDashboardMapper.js";
+import { streamsAPI } from "./services";
 import "./App.css";
 
-const mapByStreamCode = (collection) => {
-  if (!Array.isArray(collection)) {
-    return {};
+const normalizeStreamProfiles = (streams) => {
+  if (!Array.isArray(streams)) {
+    return [];
   }
-  return collection.reduce((acc, entry) => {
-    const code = entry?.stream !== undefined ? String(entry.stream) : null;
-    if (code) {
-      acc[code] = entry;
-    }
-    return acc;
-  }, {});
+
+  return streams
+    .map((entry) => {
+      const streamId =
+        entry?.stream_id !== undefined ? String(entry.stream_id) : null;
+      if (!streamId) {
+        return null;
+      }
+      const oxygenPurity = Number(entry?.oxygen_purity_percent);
+      const flowRate = Number(entry?.flow_rate_m3h);
+      const pressureBar = Number(entry?.delivery_pressure_bar);
+      const temperature = Number(entry?.temperature_out);
+      const molarFlow = Number(entry?.molar_flow);
+      const massFlow = Number(entry?.mass_flow);
+
+      const asNumberOrFallback = (value, fallback = "-") =>
+        Number.isFinite(value) ? value : fallback;
+
+      return {
+        id: streamId,
+        code: streamId,
+        label: entry?.label || entry?.stream_name || `Stream ${streamId}`,
+        composition: {
+          o2: asNumberOrFallback(oxygenPurity),
+          n2: "-",
+          ar: "-",
+        },
+        process: {
+          oxygenPurityPercent: asNumberOrFallback(oxygenPurity, null),
+          flowRateM3h: asNumberOrFallback(flowRate, null),
+          deliveryPressureBar: asNumberOrFallback(pressureBar, null),
+          temperature: asNumberOrFallback(temperature, null),
+          pressure: asNumberOrFallback(pressureBar, null),
+          molarFlow: asNumberOrFallback(molarFlow, null),
+          massFlow: asNumberOrFallback(massFlow, null),
+          description: entry?.label || entry?.stream_name || `Stream ${streamId}`,
+        },
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Number(a.id) - Number(b.id));
 };
 
-const STREAM_COMPOSITION_MAP = mapByStreamCode(STREAM_COMPOSITIONS);
-const STREAM_CONTROL_MAP = mapByStreamCode(STREAM_CONTROLS);
-
-const normalizeComposition = (entry) => ({
-  o2: entry?.o2 ?? 0,
-  n2: entry?.n2 ?? 0,
-  ar: entry?.ar ?? 0,
-  label: entry?.label,
-});
-
-const normalizeProcess = (entry) => {
-  if (!entry) {
+const normalizeDbValue = (value) => {
+  if (value === "-" || value === null || value === undefined) {
     return null;
   }
-  return {
-    temperature: entry.temperatureC,
-    pressure: entry.pressureKPa,
-    molarFlow: entry.molarFlowKmolPerHr,
-    massFlow: entry.massFlowKgPerHr,
-    description: entry.description,
-  };
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
-
-const STREAM_PROFILES = Object.fromEntries(
-  Object.entries(STREAM_PRESETS).map(([key, preset]) => {
-    const compositionEntry = STREAM_COMPOSITION_MAP[preset.code];
-    const processEntry = STREAM_CONTROL_MAP[preset.code];
-    const normalizedComposition = normalizeComposition(compositionEntry || {});
-    return [
-      key,
-      {
-        ...preset,
-        label: normalizedComposition.label || preset.label || preset.id,
-        composition: {
-          o2: normalizedComposition.o2,
-          n2: normalizedComposition.n2,
-          ar: normalizedComposition.ar,
-        },
-        process: normalizeProcess(processEntry),
-      },
-    ];
-  }),
-);
-
-const STREAM_OPTIONS = Object.values(STREAM_PROFILES);
 
 const KPI_ICON_MAP = {
   droplet: FiDroplet,
@@ -145,14 +131,13 @@ function App() {
   const [error, setError] = useState(null);
   const [storageLevels, setStorageLevels] = useState([]);
   const [supplyDemand, setSupplyDemand] = useState(null);
-  const [activeStream, setActiveStream] = useState(STREAM_OPTIONS[0]?.id || "");
+  const [streamProfiles, setStreamProfiles] = useState([]);
+  const [activeStream, setActiveStream] = useState("");
   const [detailView, setDetailView] = useState(null);
   const [activeView, setActiveView] = useState("Default");
   const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
   const [backupPanelPulse, setBackupPanelPulse] = useState(false);
   const [demandPanelPulse, setDemandPanelPulse] = useState(false);
-  const [useLiveApi, setUseLiveApi] = useState(false);
-  const [apiResolved, setApiResolved] = useState(false);
   const [logUpload, setLogUpload] = useState(() => ({
     ...DEFAULT_LOG_METADATA,
   }));
@@ -163,9 +148,6 @@ function App() {
   const alarmPulseTimeoutRef = useRef(null);
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
-  const prevStreamForMockRef = useRef(null);
-  const offlineTrendSeriesRef = useRef(null);
-  const offlineStorageRef = useRef(null);
 
   const toggleTheme = useCallback(() => {
     setIsDarkMode((d) => {
@@ -227,94 +209,47 @@ function App() {
     };
   }, [sidebarMobileOpen]);
 
-  const refreshStreamData = useCallback((streamId) => {
-    try {
-      const profile = STREAM_PROFILES[streamId] || STREAM_OPTIONS[0];
-      if (!profile) {
-        throw new Error("No stream profiles configured");
-      }
-      if (!offlineTrendSeriesRef.current) {
-        offlineTrendSeriesRef.current = generateGlobalTrendSeries();
-      }
-      if (!offlineStorageRef.current) {
-        offlineStorageRef.current = generateGlobalStorageComparison();
-      }
-      const trendSeries = offlineTrendSeriesRef.current;
-      const latestPoint = trendSeries[trendSeries.length - 1] || null;
-      const nextStatus = generateStreamStatus(trendSeries);
-      const nextBackup = generateBackupPanelData(profile);
-      const nextStorage = offlineStorageRef.current;
-      const supplyForAlarms = getStaticSystemDemandSupply();
-      const nextAlarms = generateAlarmPanelData({
-        latestPoint,
-        supplyDemand: supplyForAlarms,
-        backupData: nextBackup,
-      });
-      setData(trendSeries);
-      setStatus(nextStatus);
-      setBackup(nextBackup);
-      setStorageLevels(nextStorage);
-      setAlarms(nextAlarms);
-      setLoading(false);
-      setError(null);
-    } catch (err) {
-      setError(err?.message || "Failed to generate simulated data");
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const live = await loadLiveDashboard();
+        const [live, streamRows] = await Promise.all([
+          loadLiveDashboard(),
+          streamsAPI.getAllStreams(),
+        ]);
         if (cancelled) {
           return;
         }
+
+        const normalizedStreams = normalizeStreamProfiles(streamRows);
+        if (normalizedStreams.length === 0) {
+          throw new Error("No Aspen streams available in database.");
+        }
+
+        setStreamProfiles(normalizedStreams);
+        setActiveStream((prev) => prev || normalizedStreams[0].id);
         setData(live.data);
         setStatus(live.status);
         setStorageLevels(live.storageLevels);
         setAlarms(live.alarms);
         setBackup(live.backup);
         setSupplyDemand(live.supplyDemand);
-        setUseLiveApi(true);
         setLoading(false);
         setError(null);
-      } catch {
+      } catch (err) {
         if (cancelled) {
           return;
         }
-        setUseLiveApi(false);
-        // setSupplyDemand(getStaticSystemDemandSupply());
-        // refreshStreamData(activeStream);
+        setError(err?.message || "Failed to load dashboard from API");
+        setLoading(false);
       } finally {
-        if (!cancelled) {
-          setApiResolved(true);
-        }
+        // no-op
       }
     })();
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time API bootstrap
   }, []);
-
-  useEffect(() => {
-    if (!apiResolved || useLiveApi) {
-      return;
-    }
-    if (!activeStream) {
-      return;
-    }
-    if (prevStreamForMockRef.current === null) {
-      prevStreamForMockRef.current = activeStream;
-      return;
-    }
-    if (prevStreamForMockRef.current !== activeStream) {
-      prevStreamForMockRef.current = activeStream;
-      refreshStreamData(activeStream);
-    }
-  }, [apiResolved, useLiveApi, activeStream, refreshStreamData]);
 
   useEffect(() => {
     return () => {
@@ -411,14 +346,22 @@ function App() {
     return <div className="error">{error}</div>;
   }
 
-  const streamOptions = STREAM_OPTIONS;
+  const streamOptions = streamProfiles;
+  const currentStreamIndex = streamProfiles.findIndex(
+    (profile) => profile.id === activeStream,
+  );
   const currentStreamProfile =
-    STREAM_PROFILES[activeStream] || streamOptions[0];
+    streamProfiles[currentStreamIndex] || streamOptions[0] || null;
+  const previousStreamProfile =
+    currentStreamIndex > 0 ? streamProfiles[currentStreamIndex - 1] : null;
   const currentStreamProcess = currentStreamProfile?.process || null;
+  const previousStreamProcess = previousStreamProfile?.process || null;
   const latestPoint = data[data.length - 1];
   const earliestPoint = data[0];
   const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
-  const lastUpdated = formatTimestamp(status.timestamp);
+  const lastUpdated = status?.timestamp
+    ? formatTimestamp(status.timestamp)
+    : "N/A";
   const coveragePercent = (() => {
     if (!supplyDemand?.supply) {
       return null;
@@ -465,13 +408,44 @@ function App() {
     return `${sign}${formatted}${suffix}`;
   };
 
+  const compareStreamValue = (currentValue, previousValue, suffix = "") => {
+    const current = Number(currentValue);
+    const previous = Number(previousValue);
+    if (!Number.isFinite(current) || !Number.isFinite(previous)) {
+      return `0%`;
+    }
+    if (previous === 0) {
+      return current === 0 ? "0%" : `+100%`;
+    }
+    const percentageChange = ((current - previous) / Math.abs(previous)) * 100;
+    const formatted = percentageChange.toFixed(2);
+    const sign = percentageChange >= 0 ? "+" : "";
+    return `${sign}${formatted}%`;
+  };
+
   const metricValue = (key, suffix = "") => {
-    if (!key || !status) {
+    if (!key) {
       return `0${suffix}`;
     }
-    const reading = status[key];
+
+    const streamReadingMap = {
+      purity: normalizeDbValue(currentStreamProcess?.oxygenPurityPercent),
+      flowRate: normalizeDbValue(currentStreamProcess?.flowRateM3h),
+      pressure: normalizeDbValue(currentStreamProcess?.deliveryPressureBar),
+    };
+
+    const reading =
+      streamReadingMap[key] !== undefined && streamReadingMap[key] !== null
+        ? streamReadingMap[key]
+        : status?.[key];
+
     if (reading === undefined || reading === null || reading === "") {
       return `0${suffix}`;
+    }
+    
+    const value = Number(reading);
+    if (Number.isFinite(value)) {
+      return `${value.toFixed(2)}${suffix}`;
     }
     return `${reading}${suffix}`;
   };
@@ -506,8 +480,9 @@ function App() {
       return "N/A";
     }
     let formatted = value;
-    if (typeof value === "number" && typeof meta?.precision === "number") {
-      formatted = value.toFixed(meta.precision);
+    if (typeof value === "number") {
+      const precision = typeof meta?.precision === "number" ? meta.precision : 2;
+      formatted = value.toFixed(precision);
     }
     if (typeof formatted === "number") {
       formatted = formatted.toString();
@@ -613,7 +588,28 @@ function App() {
     id: kpi.id,
     label: kpi.label,
     value: metricValue(kpi.valueKey, kpi.valueSuffix || ""),
-    delta: trendValue(kpi.deltaKey, kpi.deltaSuffix || ""),
+    delta:
+      kpi.id === "purity"
+        ? compareStreamValue(
+            currentStreamProcess?.oxygenPurityPercent,
+            previousStreamProcess?.oxygenPurityPercent,
+            kpi.deltaSuffix || "",
+          )
+        : kpi.id === "flowRate"
+          ? compareStreamValue(
+              currentStreamProcess?.flowRateM3h,
+              previousStreamProcess?.flowRateM3h,
+              kpi.deltaSuffix || "",
+            )
+          : kpi.id === "pressure"
+            ? compareStreamValue(
+                currentStreamProcess?.deliveryPressureBar,
+                previousStreamProcess?.deliveryPressureBar,
+                kpi.deltaSuffix || "",
+              )
+            : kpi.id === "coverage"
+              ? ""
+              : trendValue(kpi.deltaKey, kpi.deltaSuffix || ""),
     helper: kpi.helper,
     icon: KPI_ICON_MAP[kpi.iconKey] || null,
     tone: kpi.tone,

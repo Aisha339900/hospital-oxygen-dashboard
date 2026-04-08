@@ -844,9 +844,7 @@ body {
 }
 
 .metric-value-row {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
+	display: block;
 }
 
 .metric-value {
@@ -863,6 +861,13 @@ body {
 	gap: 6px;
 }
 
+.metric-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
 .metric-trend.up {
 	background: rgba(52, 211, 153, 0.15);
 	color: var(--success);
@@ -876,6 +881,7 @@ body {
 .metric-caption {
 	color: rgba(255, 255, 255, 0.7);
 	font-size: 0.85rem;
+	margin: 0;
 }
 
 :root.light-mode .metric-caption {

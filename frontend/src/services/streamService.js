@@ -1,10 +1,10 @@
-import axiosInstance from "./axiosConfig";
+import apiClient from "./api";
 
 export const streamsAPI = {
   // Get all streams
   getAllStreams: async () => {
     try {
-      const response = await axiosInstance.get("/streams");
+      const response = await apiClient.get("/streams");
       return response.data;
     } catch (error) {
       console.error("Error fetching all streams:", error);
@@ -15,7 +15,7 @@ export const streamsAPI = {
   // Get stream by ID
   getStreamById: async (streamId) => {
     try {
-      const response = await axiosInstance.get(`/streams/${streamId}`);
+      const response = await apiClient.get(`/streams/${streamId}`);
       return response.data;
     } catch (error) {
       console.error("Error fetching stream:", error);
@@ -26,7 +26,7 @@ export const streamsAPI = {
   // Create a new stream
   createStream: async (streamData) => {
     try {
-      const response = await axiosInstance.post("/streams", streamData);
+      const response = await apiClient.post("/streams", streamData);
       return response.data;
     } catch (error) {
       console.error("Error creating stream:", error);
@@ -37,7 +37,7 @@ export const streamsAPI = {
   // Update stream
   updateStream: async (streamId, streamData) => {
     try {
-      const response = await axiosInstance.put(
+      const response = await apiClient.put(
         `/streams/${streamId}`,
         streamData,
       );

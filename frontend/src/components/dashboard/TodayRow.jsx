@@ -9,10 +9,18 @@ function TodayRow({
   currentStreamProcess
 }) {
   const composition = currentStreamProfile?.composition;
-  const formatComponent = (value = 0) => `${(value * 100).toFixed(2)}%`;
+  const formatComponent = (value) => {
+    if (value === '-' || value === null || value === undefined) {
+      return '-';
+    }
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return '-';
+    }
+    const percentValue = value <= 1 ? value * 100 : value;
+    return `${percentValue.toFixed(3)}%`;
+  };
   const processSpecs = [
     { key: 'temperature', label: 'T', unit: 'degC', digits: 2 },
-    { key: 'pressure', label: 'P', unit: 'kPa', digits: 0 },
     { key: 'molarFlow', label: 'Molar', unit: 'kmol/h', digits: 3 },
     { key: 'massFlow', label: 'Mass', unit: 'kg/h', digits: 2 }
   ];

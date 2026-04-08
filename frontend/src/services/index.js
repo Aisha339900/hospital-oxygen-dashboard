@@ -6,4 +6,5 @@ export { backupService } from "./backupService";
 export { demandStatusService } from "./demandStatusService";
 export { supplyStatusService } from "./supplyStatusService";
 export { authService } from "./authService";
+export { streamsAPI } from "./streamService";
 export { default as apiClient } from "./api";

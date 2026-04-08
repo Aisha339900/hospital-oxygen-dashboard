@@ -2,7 +2,7 @@ import React from 'react';
 import { FiInfo, FiExternalLink, FiArrowUpRight } from 'react-icons/fi';
 
 function StatCard({ card, openMetricDetails }) {
-  const positive = !card.delta.startsWith('-');
+  const positive = card.delta && !card.delta.startsWith('-');
   return (
     <article className={`metric-card ${card.tone}`}>
       <div className="metric-header">
@@ -25,12 +25,16 @@ function StatCard({ card, openMetricDetails }) {
       </div>
       <div className="metric-value-row">
         <span className="metric-value">{card.value}</span>
-        <span className={`metric-trend ${positive ? 'up' : 'down'}`}>
-          <FiArrowUpRight aria-hidden="true" />
-          {card.delta}
-        </span>
       </div>
-      <p className="metric-caption">{card.helper}</p>
+      <div className="metric-footer">
+        <p className="metric-caption">{card.helper}</p>
+        {card.delta && (
+          <span className={`metric-trend ${positive ? 'up' : 'down'}`}>
+            <FiArrowUpRight aria-hidden="true" />
+            {card.delta}
+          </span>
+        )}
+      </div>
     </article>
   );
 }

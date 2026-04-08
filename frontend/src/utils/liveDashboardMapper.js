@@ -358,6 +358,22 @@ export async function loadLiveDashboard() {
 
   const supplyDemand = mapScenarioDemandSupply(demandStatus, supplyStatus);
 
+  // Demand coverage KPI must come from supply_status when available.
+  const supplyCoverage = supplyDemand?.supply?.coveragePercent;
+  const normalizedSupplyCoverage =
+    Number.isFinite(Number(supplyCoverage))
+      ? Number(supplyCoverage).toFixed(2)
+      : null;
+  const normalizedCurrentCoverage = Number(current?.demand_coverage_percent);
+  const normalizedCurrentCoverageText = Number.isFinite(normalizedCurrentCoverage)
+    ? normalizedCurrentCoverage.toFixed(2)
+    : null;
+  const resolvedCoverage =
+    normalizedSupplyCoverage ?? normalizedCurrentCoverageText;
+  if (status && resolvedCoverage !== null) {
+    status.demandCoverage = resolvedCoverage;
+  }
+
   let storageLevels = mapStorageMonthlyPayload(storage);
   if (storageLevels.length === 0 && current) {
     const sl = Number(current.storage_level_percent ?? 0);
