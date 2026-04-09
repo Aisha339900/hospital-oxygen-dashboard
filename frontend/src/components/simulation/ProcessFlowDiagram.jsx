@@ -100,104 +100,151 @@ const initialNodes = [
   {
     id: "s1",
     type: "streamTag",
-    position: { x: 0, y: 188 },
+    position: { x: 0, y: 198 },
     data: {
       n: "1",
-      tooltip: "Feed stream into the compressor.",
+      scenarioValue: "19754 l/min",
+      tooltip: "Stream 1: 25 °C, 1 bar, 19754 l/min (Aspen reference case).",
     },
   },
   {
     id: "comp",
     type: "processUnit",
-    position: { x: 100, y: 160 },
+    position: { x: 100, y: 170 },
     data: {
-      abbr: "Comp",
+      abbr: "COMP",
       title: "Compressor",
       heatOut: true,
+      scenarioLine: "W = 107 kW",
       tooltip: "Raises feed pressure for downstream separation.",
     },
   },
   {
-    id: "q100",
+    id: "wComp",
     type: "energy",
     position: { x: 108, y: 0 },
     data: {
-      label: "Q-100",
-      tooltip: "Shaft work / energy stream associated with compression.",
+      label: "W",
+      tooltip: "Mechanical power (shaft work) for COMP.",
     },
   },
   {
     id: "cooler",
     type: "processUnit",
-    position: { x: 300, y: 160 },
+    position: { x: 300, y: 170 },
     data: {
-      abbr: "Cooler",
+      abbr: "COOLER",
       title: "Cooler",
       heatOut: true,
-      tooltip: "Removes heat before membrane separation.",
+      scenarioLine: "Q = −25 877 cal/s",
+      tooltip: "Intercooler before the membrane.",
     },
   },
   {
-    id: "heat4",
+    id: "qCooler",
     type: "energy",
     position: { x: 308, y: 0 },
     data: {
-      label: "4",
-      tooltip: "Heat rejected from the cooler (energy stream).",
+      label: "Q",
+      tooltip: "Heat duty rejected from COOLER.",
     },
   },
   {
     id: "memb",
     type: "processUnit",
-    position: { x: 500, y: 160 },
+    position: { x: 500, y: 170 },
     data: {
-      abbr: "Memb",
+      abbr: "MEMBRANE",
       title: "Membrane",
       bottomOut: true,
-      tooltip: "Membrane unit: permeate toward PSA, retentate as side draw.",
+      scenarioLine: "Permeate → PSA",
+      tooltip: "Stream 4 to PSA; stream 5 is the bottom (retentate) draw.",
     },
   },
   {
     id: "psa",
     type: "processUnit",
-    position: { x: 700, y: 160 },
+    position: { x: 720, y: 248 },
     data: {
       abbr: "PSA",
       title: "Pressure swing adsorption",
       splitOutlet: true,
       bottomOut: true,
       topOut: true,
-      tooltip: "PSA polishes the permeate to product oxygen specifications.",
+      scenarioLine: "Q = 0",
+      tooltip: "Stream 6 (top) to COMP2; stream 7 (bottom) vent.",
     },
   },
   {
-    id: "out6",
-    type: "outlet",
-    position: { x: 520, y: 360 },
+    id: "comp2",
+    type: "processUnit",
+    position: { x: 860, y: 96 },
     data: {
-      n: "6",
+      abbr: "COMP2",
+      title: "Compressor",
+      heatOut: true,
+      scenarioLine: "W = 3 kW",
+      tooltip: "Second-stage compression of PSA overhead.",
+    },
+  },
+  {
+    id: "wComp2",
+    type: "energy",
+    position: { x: 868, y: 0 },
+    data: {
+      label: "W",
+      tooltip: "Mechanical power for COMP2.",
+    },
+  },
+  {
+    id: "cooler2",
+    type: "processUnit",
+    position: { x: 1020, y: 96 },
+    data: {
+      abbr: "COOLER2",
+      title: "Cooler",
+      heatOut: true,
+      scenarioLine: "Q = −778 cal/s",
+      tooltip: "Product cooler after second compression.",
+    },
+  },
+  {
+    id: "qCooler2",
+    type: "energy",
+    position: { x: 1028, y: 0 },
+    data: {
+      label: "Q",
+      tooltip: "Heat duty from COOLER2.",
+    },
+  },
+  {
+    id: "out5",
+    type: "outlet",
+    position: { x: 520, y: 400 },
+    data: {
+      n: "5",
       sub: "Membrane retentate",
-      tooltip: "Membrane bottom outlet stream.",
+      tooltip: "Bottom outlet from the membrane unit.",
     },
   },
   {
     id: "out7",
     type: "outlet",
-    position: { x: 920, y: 32 },
+    position: { x: 900, y: 420 },
     data: {
       n: "7",
-      sub: "Product",
-      tooltip: "PSA overhead product stream.",
+      sub: "PSA bottom",
+      tooltip: "PSA bottom outlet (vent / offgas leg).",
     },
   },
   {
-    id: "out8",
+    id: "out9",
     type: "outlet",
-    position: { x: 920, y: 360 },
+    position: { x: 1160, y: 96 },
     data: {
-      n: "8",
-      sub: "PSA offgas",
-      tooltip: "PSA bottom outlet stream.",
+      n: "9",
+      sub: "Product O₂",
+      tooltip: "Final conditioned oxygen product stream.",
     },
   },
 ];
@@ -219,11 +266,11 @@ const initialEdges = [
     ...materialEdge,
   },
   {
-    id: "eq100",
+    id: "ew1",
     source: "comp",
-    target: "q100",
+    target: "wComp",
     sourceHandle: "heat",
-    label: "Q-100",
+    label: "W",
     ...heatEdge,
   },
   {
@@ -235,26 +282,34 @@ const initialEdges = [
     ...materialEdge,
   },
   {
-    id: "e4",
+    id: "eq1",
     source: "cooler",
-    target: "heat4",
+    target: "qCooler",
     sourceHandle: "heat",
-    label: "4",
+    label: "Q",
     ...heatEdge,
+  },
+  {
+    id: "e4",
+    source: "memb",
+    target: "psa",
+    sourceHandle: "material",
+    label: "4",
+    ...materialEdge,
   },
   {
     id: "e5",
     source: "memb",
-    target: "psa",
-    sourceHandle: "material",
+    target: "out5",
+    sourceHandle: "bottom",
     label: "5",
     ...materialEdge,
   },
   {
     id: "e6",
-    source: "memb",
-    target: "out6",
-    sourceHandle: "bottom",
+    source: "psa",
+    target: "comp2",
+    sourceHandle: "top",
     label: "6",
     ...materialEdge,
   },
@@ -262,16 +317,40 @@ const initialEdges = [
     id: "e7",
     source: "psa",
     target: "out7",
-    sourceHandle: "top",
+    sourceHandle: "bottom",
     label: "7",
     ...materialEdge,
   },
   {
     id: "e8",
-    source: "psa",
-    target: "out8",
-    sourceHandle: "bottom",
+    source: "comp2",
+    target: "cooler2",
+    sourceHandle: "material",
     label: "8",
+    ...materialEdge,
+  },
+  {
+    id: "ew2",
+    source: "comp2",
+    target: "wComp2",
+    sourceHandle: "heat",
+    label: "W",
+    ...heatEdge,
+  },
+  {
+    id: "eq2",
+    source: "cooler2",
+    target: "qCooler2",
+    sourceHandle: "heat",
+    label: "Q",
+    ...heatEdge,
+  },
+  {
+    id: "e9",
+    source: "cooler2",
+    target: "out9",
+    sourceHandle: "material",
+    label: "9",
     ...materialEdge,
   },
 ];
@@ -296,12 +375,14 @@ function buildFlowState(variant, whatIf, trainingStepIndex, trainingSteps) {
   if (variant === "whatif" && whatIf) {
     nodes = nodes.map((n) => {
       const data = { ...n.data };
-      if (n.id === "s1") data.scenarioValue = `${whatIf.feedFlow} Nm³/h`;
+      if (n.id === "s1") data.scenarioValue = `${whatIf.feedFlow} l/min`;
       if (n.id === "comp") data.scenarioLine = `${whatIf.compressorWork} kW`;
       if (n.id === "cooler") data.scenarioLine = `${whatIf.coolerDuty} kW`;
       if (n.id === "memb") data.scenarioLine = `${whatIf.permeateSplit}% → PSA`;
-      if (n.id === "out7") data.scenarioLine = `${whatIf.productPurity}% O₂`;
-      if (n.id === "out8") data.scenarioLine = `${whatIf.offgasFlow} Nm³/h`;
+      if (n.id === "comp2") data.scenarioLine = `${whatIf.compressor2Work} kW`;
+      if (n.id === "cooler2") data.scenarioLine = `${whatIf.cooler2Duty} kW`;
+      if (n.id === "out7") data.scenarioLine = `${whatIf.offgasFlow} l/min`;
+      if (n.id === "out9") data.scenarioLine = `${whatIf.productPurity}% O₂ · ${whatIf.productFlow} l/min`;
       return { ...n, data };
     });
   }
@@ -407,7 +488,6 @@ function FlowCanvas({
 
 export default function ProcessFlowDiagram({
   variant = "default",
-  whatIf = null,
   trainingStepIndex = 0,
   trainingSteps = [],
 }) {
@@ -416,7 +496,6 @@ export default function ProcessFlowDiagram({
       <ReactFlowProvider>
         <FlowCanvas
           variant={variant}
-          whatIf={whatIf}
           trainingStepIndex={trainingStepIndex}
           trainingSteps={trainingSteps}
         />

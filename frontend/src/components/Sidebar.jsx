@@ -9,8 +9,7 @@ function Sidebar({
 	onLogsSelect,
 	onSettingsSelect,
 	onSimulationDesignSelect,
-	isDarkMode,
-	onToggleTheme,
+
 }) {
 	return (
 		<aside className={`sidebar ${className}`.trim()}>

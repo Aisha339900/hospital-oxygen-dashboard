@@ -1,62 +1,57 @@
 import React, { useEffect, useState } from "react";
-import { FiBookOpen, FiLayers, FiSliders } from "react-icons/fi";
 import ProcessFlowDiagram from "../components/simulation/ProcessFlowDiagram";
 
-const DEFAULT_LEDE =
-  "Topology from the senior design simulation model (compressor, cooler, membrane, PSA). Stream numbers match the PFD; material streams are shown in blue, energy / heat streams in red. This is not live plant piping—it explains what the dashboard metrics are meant to represent.";
+const DEFAULT_LEDE = "This diagram represents the oxygen production system based on the Aspen Plus model. It is used for training and understanding process behavior. Highlighted steps guide you through how each unit contributes to oxygen purity, flow, and system performance.";
 
-const DEFAULT_WHAT_IF = {
-  feedFlow: 118,
-  compressorWork: 420,
-  coolerDuty: 185,
-  permeateSplit: 72,
-  productPurity: 93.5,
-  offgasFlow: 24,
-};
-
-/** Step 0 = overview (no dimming). Later steps highlight a path through the PFD. */
 const SIMULATION_TRAINING_STEPS = [
   {
-    title: "PFD overview",
+    title: "Process overview",
     description:
-      "Material streams are blue; heat and shaft work are red dashed. Stream numbers match labels you can correlate with the main dashboard. Use Next to walk the flow from feed to products.",
+      "This diagram represents the oxygen production system based on the Aspen Plus model. The flow follows: Feed → Compression → Cooling → Membrane → PSA → Final compression → Product. Blue lines are material streams; red dashed lines represent energy (heat duty Q or shaft work W).",
     nodeIds: [],
     edgeIds: [],
   },
   {
-    title: "Feed — stream 1",
+    title: "Feed stream (Stream 1)",
     description:
-      "Fresh feed enters the train here. On the dashboard, changing the active stream profile only re-labels metrics—it does not rewrite this teaching diagram.",
+      "The system starts with the feed air entering at ambient conditions. This stream defines the baseline flow rate and composition entering the process. In real systems, this is influenced by demand forecasts from the hospital.",
     nodeIds: ["s1", "comp"],
     edgeIds: ["e1"],
   },
   {
-    title: "Compression & energy",
+    title: "Primary compression (COMP)",
     description:
-      "The compressor raises pressure for downstream separation. Q-100 is the energy stream (shaft work) leaving the block—parallel to how you might track utility load in operations.",
-    nodeIds: ["comp", "q100"],
-    edgeIds: ["e1", "e2", "eq100"],
+      "The compressor increases the pressure of the feed air to enable efficient separation downstream. This step consumes mechanical power (W), which is a key performance and energy KPI in the dashboard.",
+    nodeIds: ["comp", "wComp"],
+    edgeIds: ["e1", "e2", "ew1"],
   },
   {
-    title: "Intercooling",
+    title: "Cooling before separation",
     description:
-      "The cooler knocks down temperature before the membrane. Stream 4 is heat rejected—another red energy leg, distinct from material streams 2 and 3.",
-    nodeIds: ["cooler", "heat4"],
-    edgeIds: ["e2", "e3", "e4"],
+      "After compression, the air is cooled to optimal conditions before entering the membrane. The cooler removes excess heat (Q), which improves separation efficiency and protects downstream units.",
+    nodeIds: ["cooler", "qCooler"],
+    edgeIds: ["e2", "e3", "eq1"],
   },
   {
-    title: "Membrane split",
+    title: "Membrane separation",
     description:
-      "The membrane sends permeate toward PSA polishing while stream 6 takes retentate as a side draw. Follow both legs when reconciling mass balance stories.",
-    nodeIds: ["memb", "out6"],
-    edgeIds: ["e5", "e6"],
+      "The membrane performs the first stage of oxygen enrichment. It splits the flow into permeate (oxygen-enriched, sent to PSA) and retentate (remaining gases). Monitoring this split is critical for mass balance and efficiency.",
+    nodeIds: ["memb", "out5"],
+    edgeIds: ["e4", "e5"],
   },
   {
-    title: "PSA products",
+    title: "PSA purification",
     description:
-      "PSA yields overhead product oxygen (7) and a bottom offgas (8). Purity and flow on the dashboard refer to this kind of split—not to values edited in What-if mode.",
-    nodeIds: ["psa", "out7", "out8"],
-    edgeIds: ["e7", "e8"],
+      "The PSA unit further purifies oxygen by adsorbing unwanted gases. The top stream continues toward product processing, while the bottom stream is rejected as off-gas. This step determines final oxygen purity.",
+    nodeIds: ["psa", "out7", "comp2"],
+    edgeIds: ["e6", "e7"],
+  },
+  {
+    title: "Final compression and cooling",
+    description:
+      "The purified oxygen is compressed again and cooled to meet delivery conditions. This ensures the product stream satisfies required pressure and temperature specifications before storage or distribution.",
+    nodeIds: ["comp2", "wComp2", "cooler2", "qCooler2", "out9"],
+    edgeIds: ["e8", "e9", "ew2", "eq2"],
   },
 ];
 
@@ -68,14 +63,6 @@ const ENTRY_CONFIG = {
   },
 };
 
-const WHAT_IF_FIELDS = [
-  { key: "feedFlow", label: "Feed (stream 1)", unit: "Nm³/h", min: 0, max: 500, step: 1 },
-  { key: "compressorWork", label: "Compressor work", unit: "kW", min: 0, max: 2000, step: 5 },
-  { key: "coolerDuty", label: "Cooler duty", unit: "kW", min: 0, max: 800, step: 5 },
-  { key: "permeateSplit", label: "Permeate to PSA", unit: "%", min: 0, max: 100, step: 1 },
-  { key: "productPurity", label: "Product O₂ (stream 7)", unit: "%", min: 85, max: 99.9, step: 0.1 },
-  { key: "offgasFlow", label: "Offgas (stream 8)", unit: "Nm³/h", min: 0, max: 200, step: 1 },
-];
 
 export default function SimulationDesignPage({
   isDarkMode,
@@ -85,13 +72,11 @@ export default function SimulationDesignPage({
   const entry = entryMode && ENTRY_CONFIG[entryMode] ? ENTRY_CONFIG[entryMode] : null;
   const title = entry ? entry.title : "Process flow (simulation)";
   const lede = entry ? entry.lede : DEFAULT_LEDE;
-  const pillClass = entry ? "status-pill accent" : "status-pill neutral";
 
-  const [whatIf, setWhatIf] = useState(() => ({ ...DEFAULT_WHAT_IF }));
   const [trainingStep, setTrainingStep] = useState(0);
 
   const diagramVariant =
-    entryMode === "whatif" ? "whatif" : entryMode === "training" ? "training" : "default";
+    entryMode === "training" ? "training" : "default";
 
   useEffect(() => {
     if (entryMode === "training") {
@@ -100,16 +85,6 @@ export default function SimulationDesignPage({
   }, [entryMode]);
 
   const trainingMax = SIMULATION_TRAINING_STEPS.length - 1;
-
-  const updateWhatIf = (key, raw) => {
-    const n = parseFloat(raw);
-    if (Number.isNaN(n)) return;
-    const field = WHAT_IF_FIELDS.find((f) => f.key === key);
-    const clamped = field
-      ? Math.min(field.max, Math.max(field.min, n))
-      : n;
-    setWhatIf((prev) => ({ ...prev, [key]: clamped }));
-  };
 
   return (
     <div className="main-column simulation-design-page">
@@ -127,42 +102,6 @@ export default function SimulationDesignPage({
           {isDarkMode ? "Light mode" : "Dark mode"}
         </button>
       </header>
-
-      {entryMode === "whatif" ? (
-        <section className="panel simulation-whatif-panel" aria-label="Local what-if parameters">
-          <p className="simulation-whatif-panel__hint">
-            <strong>Session-only.</strong> These values drive labels on the diagram below. They are not
-            saved, not sent to the server, and do not alter simulated dashboard time series or alarms.
-          </p>
-          <div className="simulation-whatif-grid">
-            {WHAT_IF_FIELDS.map((f) => (
-              <label key={f.key} className="simulation-whatif-field">
-                <span className="simulation-whatif-field__label">
-                  {f.label} <span className="simulation-whatif-field__unit">({f.unit})</span>
-                </span>
-                <input
-                  type="number"
-                  className="simulation-whatif-field__input"
-                  value={whatIf[f.key]}
-                  min={f.min}
-                  max={f.max}
-                  step={f.step}
-                  onChange={(e) => updateWhatIf(f.key, e.target.value)}
-                />
-              </label>
-            ))}
-          </div>
-          <div className="simulation-whatif-actions">
-            <button
-              type="button"
-              className="simulation-whatif-reset"
-              onClick={() => setWhatIf({ ...DEFAULT_WHAT_IF })}
-            >
-              Reset to defaults
-            </button>
-          </div>
-        </section>
-      ) : null}
 
       {entryMode === "training" ? (
         <section className="panel simulation-training-panel" aria-label="Training walkthrough">
@@ -202,32 +141,33 @@ export default function SimulationDesignPage({
         <div className="simulation-flow-panel__inner">
           <ProcessFlowDiagram
             variant={diagramVariant}
-            whatIf={entryMode === "whatif" ? whatIf : null}
             trainingStepIndex={trainingStep}
             trainingSteps={SIMULATION_TRAINING_STEPS}
           />
         </div>
       </section>
 
-      <section className="panel simulation-assumptions" aria-label="Assumptions and limitations">
-        <h2 className="simulation-assumptions__title">Assumptions and limitations</h2>
-        <ul className="simulation-assumptions__list">
-          <li>
-            Steady-state or campaign results from a process simulator (e.g. Aspen HYSYS,
-            UniSim) informed the expected ranges used in this demo—not continuous hospital
-            SCADA data.
-          </li>
-          <li>
-            Trend charts on the main dashboard use <strong>simulated time series</strong>{" "}
-            when the history API is unavailable; they illustrate dynamics, not measured
-            ward-by-ward consumption.
-          </li>
-          <li>
-            Alarm and backup panels combine the same illustrative logic; treat values as
-            placeholders for integration testing and stakeholder review.
-          </li>
-        </ul>
-      </section>
+      <section className="panel simulation-assumptions" aria-label="System context and limitations">
+  <h2 className="simulation-assumptions__title">System context and limitations</h2>
+  <ul className="simulation-assumptions__list">
+    <li>
+      This visualization is based on a <strong>steady-state Aspen Plus simulation</strong> of the oxygen production process. 
+      It represents expected operating conditions rather than real-time plant behavior.
+    </li>
+    <li>
+      Displayed values (e.g., purity, flow rate, pressure) are used to <strong>evaluate system performance against predefined thresholds</strong>, 
+      supporting alert generation and compliance checks.
+    </li>
+    <li>
+      The dashboard focuses on <strong>decision support and system awareness</strong>, helping stakeholders identify potential issues 
+      such as low purity, abnormal pressure, or insufficient backup supply.
+    </li>
+    <li>
+      This interface does not directly control equipment; it provides a <strong>digital supervisory layer</strong> 
+      that complements physical plant operations.
+    </li>
+  </ul>
+</section>
     </div>
   );
 }

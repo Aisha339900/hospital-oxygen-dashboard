@@ -103,13 +103,6 @@ export default function AuthPage({
     setPasswordConfirm("");
   };
 
-  const goForgot = () => {
-    setMode("forgot");
-    setError(null);
-    setInfo(null);
-    setPassword("");
-    setPasswordConfirm("");
-  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -295,19 +288,6 @@ export default function AuthPage({
                 ) : null}
               </>
             )}
-
-            {/* {mode === "login" ? (
-              <div className="auth-forgot">
-                <button
-                  type="button"
-                  className="auth-link"
-                  onClick={goForgot}
-                  disabled={busy}
-                >
-                  Forgot your password?
-                </button>
-              </div>
-            ) : null} */}
 
             <button
               type="submit"
