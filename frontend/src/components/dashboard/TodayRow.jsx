@@ -5,8 +5,20 @@ function TodayRow({
   streamOptions = [],
   activeStream,
   onStreamChange,
+  currentStreamProfile,
   currentStreamProcess
 }) {
+  const composition = currentStreamProfile?.composition;
+  const formatComponent = (value) => {
+    if (value === '-' || value === null || value === undefined) {
+      return '-';
+    }
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return '-';
+    }
+    const percentValue = value <= 1 ? value * 100 : value;
+    return `${percentValue.toFixed(3)}%`;
+  };
   const processSpecs = [
     { key: 'temperature', label: 'T', unit: 'degC', digits: 2 },
     { key: 'molarFlow', label: 'Molar', unit: 'kmol/h', digits: 3 },
@@ -64,6 +76,22 @@ function TodayRow({
               </div>
             ))}
           </div>
+        )}
+        {composition ? (
+          <div className="composition-inline" role="group" aria-label="Stream composition">
+            <span className="composition-title">Composition</span>
+            <span className="composition-item">
+              O2 <strong>{formatComponent(composition.o2)}</strong>
+            </span>
+            <span className="composition-item">
+              N2 <strong>{formatComponent(composition.n2)}</strong>
+            </span>
+            <span className="composition-item">
+              Ar <strong>{formatComponent(composition.ar)}</strong>
+            </span>
+          </div>
+        ) : (
+          <p className="sync-label">Select a stream to update dashboard metrics</p>
         )}
       </div>
     </div>
