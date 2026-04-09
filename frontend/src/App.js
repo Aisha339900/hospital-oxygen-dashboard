@@ -50,11 +50,6 @@ const normalizeStreamProfiles = (streams) => {
         id: streamId,
         code: streamId,
         label: entry?.label || entry?.stream_name || `Stream ${streamId}`,
-        composition: {
-          o2: asNumberOrFallback(oxygenPurity),
-          n2: "-",
-          ar: "-",
-        },
         process: {
           oxygenPurityPercent: asNumberOrFallback(oxygenPurity, null),
           flowRateM3h: asNumberOrFallback(flowRate, null),
@@ -291,8 +286,15 @@ function App() {
           throw new Error("No Aspen streams available in database.");
         }
 
+        const defaultStream =
+          normalizedStreams.find((stream) =>
+            /out\s*cooler\s*2/i.test(stream.label || ""),
+          ) ||
+          normalizedStreams.find((stream) => String(stream.id) === "9") ||
+          normalizedStreams[0];
+
         setStreamProfiles(normalizedStreams);
-        setActiveStream((prev) => prev || normalizedStreams[0].id);
+        setActiveStream((prev) => prev || defaultStream.id);
         setData(live.data);
         setTrendData(live.trendData || []);
         setStatus(live.status);
@@ -453,9 +455,6 @@ function App() {
   const latestPoint = data[data.length - 1];
   const earliestPoint = data[0];
   const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
-  const lastUpdated = status?.timestamp
-    ? formatTimestamp(status.timestamp)
-    : "N/A";
   const coveragePercent = (() => {
     if (!supplyDemand?.supply) {
       return null;
@@ -665,8 +664,6 @@ function App() {
     }
   };
 
-  const favoriteLinks = ["Overview", "Projects"];
-
   const sidebarCollections = [
     {
       title: "Dashboards",
@@ -805,7 +802,6 @@ function App() {
           ) : null}
           <Sidebar
             className={sidebarMobileOpen ? "sidebar--open" : ""}
-            favoriteLinks={favoriteLinks}
             sidebarCollections={sidebarCollections}
             activeView={activeView}
             viewableDashboards={viewableDashboards}
@@ -873,11 +869,9 @@ function App() {
                 backupPanelPulse={backupPanelPulse}
                 demandPanelPulse={demandPanelPulse}
                 unacknowledgedAlarms={unacknowledgedAlarms}
-                lastUpdated={lastUpdated}
                 streamOptions={streamOptions}
                 activeStream={activeStream}
                 onStreamChange={handleStreamChange}
-                currentStreamProfile={currentStreamProfile}
                 currentStreamLabel={currentStreamProfile?.label || "-"}
                 currentStreamProcess={currentStreamProcess}
                 trendChartConfig={TREND_CHARTS}

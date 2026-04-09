@@ -2,7 +2,6 @@ import React from 'react';
 
 function Sidebar({
 	className = '',
-	favoriteLinks,
 	sidebarCollections,
 	activeView,
 	viewableDashboards,
@@ -22,21 +21,6 @@ function Sidebar({
 					<strong>Oxygen Ops</strong>
 				</div>
 			</div>
-
-			<div className="sidebar-tabs" role="tablist" aria-label="Sidebar shortcuts">
-				<button className="tab active" type="button" tabIndex={-1} aria-current="true">
-					Favorites
-				</button>
-				<button className="tab" type="button" tabIndex={-1} disabled>
-					Recently
-				</button>
-			</div>
-
-			<ul className="favorites-list">
-				{favoriteLinks.map((link) => (
-					<li key={link}>{link}</li>
-				))}
-			</ul>
 
 			<nav className="sidebar-menu" aria-label="Primary">
 				{sidebarCollections.map((section) => (

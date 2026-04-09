@@ -25,11 +25,9 @@ function DashboardPage({
   backupPanelPulse,
   demandPanelPulse,
   unacknowledgedAlarms,
-  lastUpdated,
   streamOptions,
   activeStream,
   onStreamChange,
-  currentStreamProfile,
   currentStreamLabel,
   currentStreamProcess,
   trendChartConfig = {},
@@ -42,7 +40,6 @@ function DashboardPage({
       <div className="main-column">
         <StatusHeader
           unacknowledgedAlarms={unacknowledgedAlarms}
-          lastUpdated={lastUpdated}
           currentStreamLabel={currentStreamLabel}
           isDarkMode={isDarkMode}
           onToggleTheme={onToggleTheme}
@@ -52,7 +49,6 @@ function DashboardPage({
           streamOptions={streamOptions}
           activeStream={activeStream}
           onStreamChange={onStreamChange}
-          currentStreamProfile={currentStreamProfile}
           currentStreamProcess={currentStreamProcess}
         />
         <div className="stream-trends-divider" role="presentation" aria-hidden="true" />
