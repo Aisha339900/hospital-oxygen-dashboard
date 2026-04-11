@@ -8,12 +8,14 @@ import {
   FiDroplet,
   FiLayers,
   FiTarget,
+  FiActivity,
 } from "react-icons/fi";
 import Sidebar from "./components/Sidebar";
 import DashboardPage from "./pages/DashboardPage";
 import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
 import SimulationDesignPage from "./pages/SimulationDesignPage";
+import PredictiveAnalyticsPage from "./pages/PredictiveAnalyticsPage";
 import AuthPage from "./pages/AuthPage";
 import DetailModal from "./components/DetailModal";
 import ChatWidget from "./components/ChatWidget";
@@ -699,6 +701,7 @@ function App() {
       title: "Pages",
       items: [
         { label: "Logs", icon: FiFileText },
+        { label: "Predictive Analytics", icon: FiActivity },
         { label: "Simulation Design", icon: FiLayers },
         { label: "Settings", icon: FiSettings },
         
@@ -787,6 +790,7 @@ function App() {
   };
   const isLogsView = activeView === "Logs";
   const isSettingsView = activeView === "Settings";
+  const isPredictiveView = activeView === "Predictive Analytics";
   const isSimulationView = activeView === "Simulation design";
   const trendsAreSimulated = apiResolved && !useLiveApi;
 
@@ -835,6 +839,11 @@ function App() {
               closeMobileSidebar();
             }}
             onSimulationDesignSelect={handleSimulationDesignFromSidebar}
+            onPredictiveAnalyticsSelect={() => {
+              setSimulationEntry(null);
+              setActiveView("Predictive Analytics");
+              closeMobileSidebar();
+            }}
             isDarkMode={isDarkMode}
             onToggleTheme={toggleTheme}
           />
@@ -842,7 +851,7 @@ function App() {
           <main
             id="main-content"
             tabIndex={-1}
-            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isSimulationView ? "simulation-mode" : ""}`}
+            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isPredictiveView ? "predictive-mode" : ""} ${isSimulationView ? "simulation-mode" : ""}`}
           >
             {isLogsView ? (
               <LogsPage
@@ -870,6 +879,8 @@ function App() {
                   onToggleTheme={toggleTheme}
                   entryMode={simulationEntry}
                 />
+            ) : isPredictiveView ? (
+              <PredictiveAnalyticsPage />
             ) : (
               <DashboardPage
                 statCards={statCards}

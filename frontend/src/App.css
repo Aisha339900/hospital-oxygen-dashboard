@@ -607,8 +607,18 @@ body {
 	grid-template-columns: minmax(0, 1fr);
 }
 
+.workspace.predictive-mode {
+	grid-template-columns: minmax(0, 1fr);
+}
+
 .main-column.logs-view {
 	max-width: 920px;
+	width: 100%;
+	margin: 0 auto;
+}
+
+.main-column.predictive-view {
+	max-width: 1500px;
 	width: 100%;
 	margin: 0 auto;
 }

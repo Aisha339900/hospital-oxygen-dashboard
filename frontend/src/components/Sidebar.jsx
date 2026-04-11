@@ -9,6 +9,7 @@ function Sidebar({
 	onLogsSelect,
 	onSettingsSelect,
 	onSimulationDesignSelect,
+	onPredictiveAnalyticsSelect,
 
 }) {
 	return (
@@ -33,17 +34,20 @@ function Sidebar({
 								const isLogsShortcut = isPagesSection && item.label === 'Logs';
 								const isSettingsShortcut = isPagesSection && item.label === 'Settings';
 								const isSimulationShortcut = isPagesSection && item.label === 'Simulation Design';
+								const isPredictiveShortcut = isPagesSection && item.label === 'Predictive Analytics';
 								const isActiveItem =
 								(isDashboardSection ||
 									isLogsShortcut ||
 									isSettingsShortcut ||
-									isSimulationShortcut) &&
+									isSimulationShortcut ||
+									isPredictiveShortcut) &&
 								item.label === activeView;
 							const isSelectable =
 								(isDashboardSection && viewableDashboards.has(item.label)) ||
 								isLogsShortcut ||
 								isSettingsShortcut ||
-								isSimulationShortcut;
+								isSimulationShortcut ||
+								isPredictiveShortcut;
 								const classNames = [isActiveItem ? 'active' : '', isSelectable ? 'actionable' : '']
 									.filter(Boolean)
 									.join(' ');
@@ -51,6 +55,8 @@ function Sidebar({
 									? () => onDashboardSelect(item.label)
 									: isLogsShortcut
 									? onLogsSelect
+									: isPredictiveShortcut
+									? onPredictiveAnalyticsSelect
 									: isSettingsShortcut
 									? onSettingsSelect
 									: isSimulationShortcut
