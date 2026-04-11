@@ -37,3 +37,13 @@ coverage/
 # Misc
 .cache/
 tmp/
+
+# Python env/cache (predictive analytics local files)
+backend/venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
