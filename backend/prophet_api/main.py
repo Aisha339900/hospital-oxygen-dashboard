@@ -143,12 +143,15 @@ def load_history_frame(collection: Collection) -> pd.DataFrame:
 
 
 def train_model(history_frame: pd.DataFrame) -> Prophet:
+    # Use tighter regularization to prevent overfitting with limited data
     model = Prophet(
-        interval_width=0.95,
-        changepoint_prior_scale=0.05,
-        weekly_seasonality=True,
+        interval_width=0.90,  # Tighter confidence intervals
+        changepoint_prior_scale=0.05,  # Reduce sensitivity to fluctuations (was 0.05)
+        seasonality_prior_scale=5.0,  # Reduce seasonality influence
+        seasonality_mode="additive",
+        weekly_seasonality=False,  # Disable with limited data
         daily_seasonality=False,
-        yearly_seasonality="auto",
+        yearly_seasonality=False,  # Not enough data for yearly
     )
     model.fit(history_frame)
     return model
@@ -171,27 +174,39 @@ def build_forecast_payload(
         forecast_days,
     )
 
+    # Constrain predictions to realistic bounds (0-100% for oxygen purity)
     forecast_points = [
         {
             "date": to_date_string(row.ds),
             "ds": to_date_string(row.ds),
-            "yhat": round(float(row.yhat), 4),
-            "yhat_lower": round(float(row.yhat_lower), 4),
-            "yhat_upper": round(float(row.yhat_upper), 4),
+            "yhat": round(max(0, min(100, float(row.yhat))), 4),
+            "yhat_lower": round(max(0, min(100, float(row.yhat_lower))), 4),
+            "yhat_upper": round(max(0, min(100, float(row.yhat_upper))), 4),
         }
         for row in forecast_only.itertuples(index=False)
     ]
 
     history_predictions = forecast_frame[forecast_frame["ds"].isin(history_frame["ds"])]
+    
+    # Constrain predicted bounds to realistic range (0-100%)
+    history_predictions = history_predictions.copy()
+    history_predictions["yhat"] = history_predictions["yhat"].clip(0, 100)
+    history_predictions["yhat_lower"] = history_predictions["yhat_lower"].clip(0, 100)
+    history_predictions["yhat_upper"] = history_predictions["yhat_upper"].clip(0, 100)
+    
     history_analysis = history_frame.merge(
         history_predictions[["ds", "yhat", "yhat_lower", "yhat_upper"]],
         on="ds",
         how="left",
     )
 
+    # Medical thresholds for oxygen purity (93-99%)
+    MEDICAL_MIN = 93.0
+    MEDICAL_MAX = 99.0
+    
     anomalies = history_analysis[
-        (history_analysis["y"] < history_analysis["yhat_lower"])
-        | (history_analysis["y"] > history_analysis["yhat_upper"])
+        (history_analysis["y"] < MEDICAL_MIN)
+        | (history_analysis["y"] > MEDICAL_MAX)
     ]
 
     anomaly_points = [
@@ -202,6 +217,7 @@ def build_forecast_payload(
             "predicted_value": round(float(row.yhat), 4),
             "yhat_lower": round(float(row.yhat_lower), 4),
             "yhat_upper": round(float(row.yhat_upper), 4),
+            "reason": "Outside safe range (93-99%)",
         }
         for row in anomalies.itertuples(index=False)
     ]

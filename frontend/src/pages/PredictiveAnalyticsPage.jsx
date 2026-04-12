@@ -100,7 +100,6 @@ function PredictiveAnalyticsPage() {
           >
             <option value={7}>7 days</option>
             <option value={14}>14 days</option>
-            <option value={21}>21 days</option>
           </select>
         </label>
       </section>
@@ -178,7 +177,7 @@ function PredictiveAnalyticsPage() {
                 type="monotone"
                 dataKey="upper"
                 name="Upper Bound"
-                stroke="rgba(45, 212, 191, 0.75)"
+                stroke="#3b82f6"
                 strokeDasharray="4 3"
                 dot={false}
                 strokeWidth={1.8}
@@ -187,7 +186,7 @@ function PredictiveAnalyticsPage() {
                 type="monotone"
                 dataKey="predicted"
                 name="Predicted"
-                stroke="var(--accent)"
+                stroke="#7c3aed"
                 dot={false}
                 strokeWidth={2.6}
               />
@@ -195,7 +194,7 @@ function PredictiveAnalyticsPage() {
                 type="monotone"
                 dataKey="lower"
                 name="Lower Bound"
-                stroke="rgba(248, 113, 113, 0.8)"
+                stroke="#ec4899"
                 strokeDasharray="4 3"
                 dot={false}
                 strokeWidth={1.8}
@@ -209,7 +208,7 @@ function PredictiveAnalyticsPage() {
         <div className="panel-header">
           <div>
             <p className="panel-title">Historical Anomalies</p>
-            <span>Actual measurements outside Prophet prediction bounds</span>
+            <span>Actual measurements outside safe range (93-99%)</span>
           </div>
         </div>
 
