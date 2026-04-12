@@ -88,7 +88,7 @@ export default function SimulationDesignPage({
   const trainingMax = SIMULATION_TRAINING_STEPS.length - 1;
 
   return (
-    <div className="main-column simulation-design-page">
+    <div className="main-column predictive-view simulation-design-page">
       <section className="panel simulation-design-header">
         <div className="simulation-design-header__top">
           <span className="simulation-badge">

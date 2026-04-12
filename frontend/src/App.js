@@ -875,7 +875,7 @@ function App() {
           <main
             id="main-content"
             tabIndex={-1}
-            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isBackupDemandView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isPredictiveView ? "predictive-mode" : ""} ${isSimulationView ? "simulation-mode" : ""}`}
+            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isBackupDemandView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isPredictiveView || isSimulationView ? "predictive-mode" : ""}`}
           >
             {isLogsView ? (
               <LogsPage
