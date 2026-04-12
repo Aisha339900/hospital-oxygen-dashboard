@@ -8,4 +8,5 @@ export { supplyStatusService } from "./supplyStatusService";
 export { authService } from "./authService";
 export { streamsAPI } from "./streamService";
 export { predictiveAnalyticsService } from "./predictiveAnalyticsService";
+export { downloadDashboardPdf, emailDashboardPdf } from "./reportService";
 export { default as apiClient } from "./api";

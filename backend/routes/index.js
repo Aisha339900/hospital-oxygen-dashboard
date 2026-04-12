@@ -10,6 +10,7 @@ const backupStatusController = require("../controllers/backupStatusController");
 const demandStatusController = require("../controllers/demandStatusController");
 const supplyStatusController = require("../controllers/supplyStatusController");
 const authController = require("../controllers/authController");
+const reportController = require("../controllers/reportController");
 const { requireAuth } = require("../middleware/authMiddleware");
 
 // Auth
@@ -19,6 +20,15 @@ router.post("/auth/logout", authController.logout);
 router.get("/auth/me", requireAuth, authController.me);
 router.post("/auth/reset-password", authController.requestPasswordReset);
 router.post("/auth/confirm-reset", authController.confirmPasswordReset);
+
+// Dashboard reports (PDF)
+router.post("/reports/dashboard-pdf", reportController.downloadDashboardPdf);
+router.get("/reports/dashboard-email/status", reportController.getDashboardEmailStatus);
+router.post(
+  "/reports/dashboard-email",
+  requireAuth,
+  reportController.emailDashboardPdf,
+);
 
 // Stream routes
 router.get("/streams", streamController.getAllStreams);

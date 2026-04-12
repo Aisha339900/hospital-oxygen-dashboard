@@ -24,6 +24,7 @@ import KPI_DEFINITIONS from "./config/kpiDefinitions.js";
 import TREND_CHARTS from "./config/trendChartsConfig.js";
 import { isAuthEnabled } from "./config/auth.js";
 import { loadLiveDashboard } from "./utils/liveDashboardMapper.js";
+import { buildDashboardReportSnapshot } from "./utils/dashboardReportSnapshot.js";
 import { streamsAPI } from "./services";
 import "./App.css";
 
@@ -942,7 +943,32 @@ function App() {
                 isDarkMode={isDarkMode}
                 onToggleTheme={toggleTheme}
                 onOpenSimulationEntry={handleOpenSimulationEntry}
-
+                buildReportSnapshot={() =>
+                  buildDashboardReportSnapshot({
+                    formatTimeAgo,
+                    currentStreamLabel: currentStreamProfile?.label || "-",
+                    activeStream,
+                    streamProfiles,
+                    lastUpdated,
+                    status,
+                    statCards,
+                    alarms,
+                    backup,
+                    supplyDemand,
+                    coveragePercent,
+                    supplyIsHealthy,
+                    unacknowledgedAlarms,
+                    trendsAreSimulated,
+                    timelineRange,
+                    trendFeedRange,
+                    trendData,
+                  })
+                }
+                reportDefaultEmail={auth?.email || ""}
+                reportEmailEnabled={
+                  typeof window !== "undefined" &&
+                  Boolean(localStorage.getItem("authToken"))
+                }
               />
             )}
           </main>

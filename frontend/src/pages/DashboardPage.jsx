@@ -7,6 +7,7 @@ import OxygenPurityVsFeedFlowPanel from '../components/charts/OxygenPurityVsFeed
 import AlertsPanel from '../components/rightRail/AlertsPanel';
 import BackupPanel from '../components/rightRail/BackupPanel';
 import DemandPanel from '../components/rightRail/DemandPanel';
+import DashboardReportActions from '../components/dashboard/DashboardReportActions';
 
 
 function DashboardPage({
@@ -34,6 +35,9 @@ function DashboardPage({
   isDarkMode,
   onToggleTheme,
   onOpenSimulationEntry,
+  buildReportSnapshot,
+  reportDefaultEmail,
+  reportEmailEnabled,
 }) {
   return (
     <>
@@ -43,6 +47,15 @@ function DashboardPage({
           currentStreamLabel={currentStreamLabel}
           isDarkMode={isDarkMode}
           onToggleTheme={onToggleTheme}
+          reportActions={
+            typeof buildReportSnapshot === "function" ? (
+              <DashboardReportActions
+                buildSnapshot={buildReportSnapshot}
+                defaultEmail={reportDefaultEmail || ""}
+                canUseEmail={Boolean(reportEmailEnabled)}
+              />
+            ) : null
+          }
         />
 
         <TodayRow

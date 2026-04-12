@@ -6,6 +6,7 @@ function StatusHeader({
   currentStreamLabel,
   isDarkMode,
   onToggleTheme,
+  reportActions = null,
 }) {
   return (
     <header className="status-bar">
@@ -14,6 +15,7 @@ function StatusHeader({
         <span className="status-pill accent">Alarms: {unacknowledgedAlarms || 0}</span>
       </div>
       <div className="status-right">
+        {reportActions}
         <button
           className="icon-btn"
           type="button"
