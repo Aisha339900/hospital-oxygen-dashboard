@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { FiLayers, FiSun, FiMoon } from "react-icons/fi";
 import ProcessFlowDiagram from "../components/simulation/ProcessFlowDiagram";
 
 const DEFAULT_LEDE = "This diagram represents the oxygen production system based on the Aspen Plus model. It is used for training and understanding process behavior. Highlighted steps guide you through how each unit contributes to oxygen purity, flow, and system performance.";
@@ -57,7 +58,7 @@ const SIMULATION_TRAINING_STEPS = [
 
 const ENTRY_CONFIG = {
   training: {
-    title: "Process flow (simulation)",
+    title: "Process flow",
     lede:
       "Walk through the oxygen system layout step by step. Highlighting focuses one part of the PFD at a time; it does not change any stored or displayed dashboard metrics.",
   },
@@ -70,7 +71,7 @@ export default function SimulationDesignPage({
   entryMode = null,
 }) {
   const entry = entryMode && ENTRY_CONFIG[entryMode] ? ENTRY_CONFIG[entryMode] : null;
-  const title = entry ? entry.title : "Process flow (simulation)";
+  const title = entry ? entry.title : "Process flow";
   const lede = entry ? entry.lede : DEFAULT_LEDE;
 
   const [trainingStep, setTrainingStep] = useState(0);
@@ -88,20 +89,27 @@ export default function SimulationDesignPage({
 
   return (
     <div className="main-column simulation-design-page">
-      <header className="simulation-design-header">
-        <div>
+      <section className="panel simulation-design-header">
+        <div className="simulation-design-header__top">
+          <span className="simulation-badge">
+            <FiLayers aria-hidden="true" />
+            Simulation
+          </span>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={onToggleTheme}
+            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {isDarkMode ? <FiSun aria-hidden="true" /> : <FiMoon aria-hidden="true" />}
+          </button>
+        </div>
+        <div className="simulation-design-header__content">
           <h1>{title}</h1>
           <p className="simulation-design-lede">{lede}</p>
         </div>
-        <button
-          type="button"
-          className="auth-theme-toggle simulation-design-theme"
-          onClick={onToggleTheme}
-          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {isDarkMode ? "Light mode" : "Dark mode"}
-        </button>
-      </header>
+      </section>
 
       {entryMode === "training" ? (
         <section className="panel simulation-training-panel" aria-label="Training walkthrough">
