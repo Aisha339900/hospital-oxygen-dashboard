@@ -13,6 +13,7 @@ import {
 import Sidebar from "./components/Sidebar";
 import DashboardPage from "./pages/DashboardPage";
 import LogsPage from "./pages/LogsPage";
+import BackupDemandPage from "./pages/BackupDemandPage";
 import SettingsPage from "./pages/SettingsPage";
 import SimulationDesignPage from "./pages/SimulationDesignPage";
 import PredictiveAnalyticsPage from "./pages/PredictiveAnalyticsPage";
@@ -102,6 +103,13 @@ const DEFAULT_LOG_METADATA = {
   type: "application/pdf",
   lastModified: 1771072671000,
 };
+const DEFAULT_BACKUP_DEMAND_ASSET_PATH = `${process.env.PUBLIC_URL || ""}/HOSPITAL OXYGEN SIMULATION.pdf`;
+const DEFAULT_BACKUP_DEMAND_METADATA = {
+  name: "HOSPITAL OXYGEN SIMULATION.pdf",
+  size: 243386,
+  type: "application/pdf",
+  lastModified: 0,
+};
 
 const isBlobUrl = (url) => typeof url === "string" && url.startsWith("blob:");
 
@@ -174,7 +182,7 @@ function App() {
   const [streamProfiles, setStreamProfiles] = useState([]);
   const [activeStream, setActiveStream] = useState("");
   const [detailView, setDetailView] = useState(null);
-  const [activeView, setActiveView] = useState("Default");
+  const [activeView, setActiveView] = useState("Monitoring");
   const [simulationEntry, setSimulationEntry] = useState(null);
   const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
   const [backupPanelPulse, setBackupPanelPulse] = useState(false);
@@ -189,6 +197,12 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(readInitialIsDark);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [auth, setAuth] = useState(readInitialAuth);
+  const [backupDemandUpload, setBackupDemandUpload] = useState(
+    DEFAULT_BACKUP_DEMAND_METADATA,
+  );
+  const [backupDemandPreviewUrl, setBackupDemandPreviewUrl] = useState(
+    DEFAULT_BACKUP_DEMAND_ASSET_PATH,
+  );
   const alarmPulseTimeoutRef = useRef(null);
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
@@ -355,6 +369,14 @@ function App() {
     };
   }, [logPreviewUrl]);
 
+  useEffect(() => {
+    return () => {
+      if (isBlobUrl(backupDemandPreviewUrl)) {
+        URL.revokeObjectURL(backupDemandPreviewUrl);
+      }
+    };
+  }, [backupDemandPreviewUrl]);
+
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString(undefined, {
@@ -413,6 +435,25 @@ function App() {
       lastModified: file.lastModified,
     });
     setLogPreviewUrl(nextUrl);
+    event.target.value = "";
+  };
+
+  const handleBackupDemandUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (isBlobUrl(backupDemandPreviewUrl)) {
+      URL.revokeObjectURL(backupDemandPreviewUrl);
+    }
+    const nextUrl = URL.createObjectURL(file);
+    setBackupDemandUpload({
+      name: file.name,
+      size: file.size,
+      type: file.type || "application/octet-stream",
+      lastModified: file.lastModified,
+    });
+    setBackupDemandPreviewUrl(nextUrl);
     event.target.value = "";
   };
 
@@ -512,6 +553,14 @@ function App() {
       /\.(csv|txt|json)$/i.test(logUpload.name || ""));
   const uploadedLogTimestamp = logUpload?.lastModified
     ? new Date(logUpload.lastModified).toLocaleString()
+    : null;
+  const canInlineBackupDemandPreview =
+    !!backupDemandUpload &&
+    (backupDemandUpload.type === "application/pdf" ||
+      backupDemandUpload.type.startsWith("text/") ||
+      /\.(csv|txt|json)$/i.test(backupDemandUpload.name || ""));
+  const uploadedBackupDemandTimestamp = backupDemandUpload?.lastModified
+    ? new Date(backupDemandUpload.lastModified).toLocaleString()
     : null;
 
   const trendValue = (key, suffix = "") => {
@@ -687,22 +736,16 @@ function App() {
     {
       title: "Dashboards",
       items: [
-        { label: "Default", icon: FiBarChart2 },
-        {
-          label: "Alarms & Alerts",
-          icon: FiBell,
-          badge: `${unacknowledgedAlarms || 0}`,
-        },
-        { label: "Backup Status", icon: FiSettings },
-        { label: "Demand & Supply", icon: FiTrendingUp },
+        { label: "Monitoring", icon: FiBarChart2 },
+        { label: "Predictive Analytics", icon: FiActivity },
       ],
     },
     {
       title: "Pages",
       items: [
-        { label: "Logs", icon: FiFileText },
-        { label: "Predictive Analytics", icon: FiActivity },
         { label: "Simulation Design", icon: FiLayers },
+        { label: "Logs", icon: FiFileText },
+        { label: "Backup & Demand", icon: FiFileText },
         { label: "Settings", icon: FiSettings },
         
       ],
@@ -748,38 +791,12 @@ function App() {
     oxygenPurityVsFeedFlow: buildChartDetail("oxygenPurityVsFeedFlow"),
   };
 
-  const startPanelPulse = (setPulse, pulseRef) => {
-    if (pulseRef.current) {
-      clearTimeout(pulseRef.current);
-    }
-    setPulse(true);
-    pulseRef.current = setTimeout(() => {
-      setPulse(false);
-      pulseRef.current = null;
-    }, 1200);
-  };
-
-  const triggerAlarmPanelPulse = () =>
-    startPanelPulse(setAlarmPanelPulse, alarmPulseTimeoutRef);
-  const triggerBackupPanelPulse = () =>
-    startPanelPulse(setBackupPanelPulse, backupPulseTimeoutRef);
-  const triggerDemandPanelPulse = () =>
-    startPanelPulse(setDemandPanelPulse, demandPulseTimeoutRef);
-  const dashboardPulseHandlers = {
-    "Alarms & Alerts": triggerAlarmPanelPulse,
-    "Backup Status": triggerBackupPanelPulse,
-    "Demand & Supply": triggerDemandPanelPulse,
-  };
-  const viewableDashboards = new Set(["Default"]);
+  const viewableDashboards = new Set(["Monitoring", "Predictive Analytics"]);
   const handleDashboardSelection = (label) => {
     closeMobileSidebar();
     if (viewableDashboards.has(label)) {
       setSimulationEntry(null);
       setActiveView(label);
-    }
-    const handler = dashboardPulseHandlers[label];
-    if (handler) {
-      handler();
     }
   };
   const handleStreamChange = (nextStreamId) => {
@@ -789,6 +806,7 @@ function App() {
     setActiveStream(nextStreamId);
   };
   const isLogsView = activeView === "Logs";
+  const isBackupDemandView = activeView === "Backup & Demand";
   const isSettingsView = activeView === "Settings";
   const isPredictiveView = activeView === "Predictive Analytics";
   const isSimulationView = activeView === "Simulation design";
@@ -833,6 +851,11 @@ function App() {
               setActiveView("Logs");
               closeMobileSidebar();
             }}
+            onBackupDemandSelect={() => {
+              setSimulationEntry(null);
+              setActiveView("Backup & Demand");
+              closeMobileSidebar();
+            }}
             onSettingsSelect={() => {
               setSimulationEntry(null);
               setActiveView("Settings");
@@ -851,7 +874,7 @@ function App() {
           <main
             id="main-content"
             tabIndex={-1}
-            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isPredictiveView ? "predictive-mode" : ""} ${isSimulationView ? "simulation-mode" : ""}`}
+            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isBackupDemandView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isPredictiveView ? "predictive-mode" : ""} ${isSimulationView ? "simulation-mode" : ""}`}
           >
             {isLogsView ? (
               <LogsPage
@@ -861,6 +884,15 @@ function App() {
                 handleLogUpload={handleLogUpload}
                 formatFileSize={formatFileSize}
                 uploadedLogTimestamp={uploadedLogTimestamp}
+              />
+            ) : isBackupDemandView ? (
+              <BackupDemandPage
+                backupDemandUpload={backupDemandUpload}
+                backupDemandPreviewUrl={backupDemandPreviewUrl}
+                canInlineBackupDemandPreview={canInlineBackupDemandPreview}
+                handleBackupDemandUpload={handleBackupDemandUpload}
+                formatFileSize={formatFileSize}
+                uploadedBackupDemandTimestamp={uploadedBackupDemandTimestamp}
               />
             ) : isSettingsView ? (
               <div className="main-column settings-view">
