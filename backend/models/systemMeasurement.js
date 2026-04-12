@@ -34,8 +34,8 @@ const systemMeasurementSchema = new mongoose.Schema({
   },
   data_source: {
     type: String,
-    enum: ["real_sensor", "dummy", "simulated"],
-    default: "dummy",
+    enum: ["real_sensor", "simulated"],
+    default: "simulated",
   },
   createdAt: {
     type: Date,
