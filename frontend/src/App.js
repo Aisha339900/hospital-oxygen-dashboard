@@ -185,9 +185,9 @@ function App() {
   const [detailView, setDetailView] = useState(null);
   const [activeView, setActiveView] = useState("Monitoring");
   const [simulationEntry, setSimulationEntry] = useState(null);
-  const [alarmPanelPulse, setAlarmPanelPulse] = useState(false);
-  const [backupPanelPulse, setBackupPanelPulse] = useState(false);
-  const [demandPanelPulse, setDemandPanelPulse] = useState(false);
+  const [alarmPanelPulse] = useState(false);
+  const [backupPanelPulse] = useState(false);
+  const [demandPanelPulse] = useState(false);
   const [apiResolved] = useState(false);
   const [useLiveApi] = useState(false);
   const [logUpload, setLogUpload] = useState(() => ({
