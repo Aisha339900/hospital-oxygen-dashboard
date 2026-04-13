@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   FiBarChart2,
   FiTrendingUp,
-  FiBell,
   FiSettings,
   FiFileText,
   FiDroplet,
