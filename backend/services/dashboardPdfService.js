@@ -95,6 +95,19 @@ function sanitizeStreams(streams) {
   }));
 }
 
+function sanitizeReportOptions(raw) {
+  const flag = (key) =>
+    raw && typeof raw === "object" && raw[key] === false ? false : true;
+  return {
+    includeOverview: flag("includeOverview"),
+    includeKpis: flag("includeKpis"),
+    includeStreams: flag("includeStreams"),
+    includeSupplyDemand: flag("includeSupplyDemand"),
+    includeTrendSample: flag("includeTrendSample"),
+    includeAlarms: flag("includeAlarms"),
+  };
+}
+
 function sanitizeSnapshot(raw) {
   if (!raw || typeof raw !== "object") {
     throw new Error("Invalid snapshot");
@@ -179,7 +192,9 @@ function sanitizeSnapshot(raw) {
         raw.meta?.coveragePercent === null || raw.meta?.coveragePercent === undefined
           ? null
           : Number(raw.meta.coveragePercent),
+      dashboardTestMode: Boolean(raw.meta?.dashboardTestMode),
     },
+    reportOptions: sanitizeReportOptions(raw.reportOptions),
   };
 }
 
@@ -290,6 +305,13 @@ function drawHero(doc, snapshot, x, y, width) {
   });
   cy = doc.y + 2;
   doc.fontSize(9).fillColor(COLORS.muted).text(`Last updated: ${snapshot.lastUpdated || "--"}`, x, cy, { width });
+  if (snapshot.meta?.dashboardTestMode) {
+    cy = doc.y + 6;
+    doc
+      .fontSize(9)
+      .fillColor(COLORS.amberInk)
+      .text("Alarm test mode was enabled when this report was generated.", x, cy, { width });
+  }
 
   const coveragePart =
     snapshot.meta.coveragePercent !== null && !Number.isNaN(snapshot.meta.coveragePercent)
@@ -578,31 +600,37 @@ function buildDashboardPdfBuffer(snapshot) {
     const drawHeader = () => drawPageChrome(doc, snapshot);
     drawHeader();
 
+    const ro = snapshot.reportOptions || sanitizeReportOptions();
+
     let y = doc.page.margins.top;
     y = drawHero(doc, snapshot, left, y, width);
-    y = drawOverviewGrid(doc, snapshot, left, y, width);
+    if (ro.includeOverview) {
+      y = drawOverviewGrid(doc, snapshot, left, y, width);
+    }
 
-    if (snapshot.statCards.length) {
+    if (ro.includeKpis && snapshot.statCards.length) {
       y = ensureSpace(doc, y, 200, drawHeader);
       y = sectionTitle(doc, "Key performance indicators", left, y, width, "Core oxygen production metrics in a cleaner summary format.");
       y = drawKpiGrid(doc, snapshot, left, y, width);
     }
 
-    y = ensureSpace(doc, y, 180, drawHeader);
-    y = sectionTitle(doc, "Stream portfolio", left, y, width, "All available streams are included below, not just the selected one.");
-    y = drawStreamCards(doc, snapshot, left, y, width, () => {
-      drawHeader();
-      const nextY = sectionTitle(doc, "Stream portfolio", left, doc.page.margins.top, width, "Continued multi-stream overview.");
-      return nextY;
-    });
+    if (ro.includeStreams) {
+      y = ensureSpace(doc, y, 180, drawHeader);
+      y = sectionTitle(doc, "Stream portfolio", left, y, width, "All available streams are included below, not just the selected one.");
+      y = drawStreamCards(doc, snapshot, left, y, width, () => {
+        drawHeader();
+        const nextY = sectionTitle(doc, "Stream portfolio", left, doc.page.margins.top, width, "Continued multi-stream overview.");
+        return nextY;
+      });
+    }
 
-    if (snapshot.supplyDemand) {
+    if (ro.includeSupplyDemand && snapshot.supplyDemand) {
       y = ensureSpace(doc, y, 170, drawHeader);
       y = sectionTitle(doc, "Demand and backup posture", left, y, width, "Supply readiness and backup coverage at the time of export.");
       y = drawSupplyDemand(doc, snapshot, left, y, width);
     }
 
-    if (snapshot.trendSummary || snapshot.trendSample.length) {
+    if (ro.includeTrendSample && (snapshot.trendSummary || snapshot.trendSample.length)) {
       y = ensureSpace(doc, y, 180, drawHeader);
       const summaryCaption = snapshot.trendSummary
         ? `${snapshot.trendSummary.timelineRange || ""} | ${snapshot.trendSummary.trendFeedRange || ""}`
@@ -623,12 +651,14 @@ function buildDashboardPdfBuffer(snapshot) {
       });
     }
 
-    y = ensureSpace(doc, y, 120, drawHeader);
-    y = sectionTitle(doc, "Alarms", left, y, width, "Active alert states and recent timing labels.");
-    y = drawAlarms(doc, snapshot, left, y, width, () => {
-      drawHeader();
-      return sectionTitle(doc, "Alarms", left, doc.page.margins.top, width, "Continued alarm list.");
-    });
+    if (ro.includeAlarms) {
+      y = ensureSpace(doc, y, 120, drawHeader);
+      y = sectionTitle(doc, "Alarms", left, y, width, "Active alert states and recent timing labels.");
+      y = drawAlarms(doc, snapshot, left, y, width, () => {
+        drawHeader();
+        return sectionTitle(doc, "Alarms", left, doc.page.margins.top, width, "Continued alarm list.");
+      });
+    }
 
     doc.end();
   });

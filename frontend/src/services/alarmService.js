@@ -38,6 +38,18 @@ export const alarmService = {
   },
 
   /**
+   * Sync rule-engine alarms from dashboard evaluation payload (same inputs as UI).
+   */
+  syncDashboardAlarms: async (body) => {
+    try {
+      const response = await apiClient.post("/alarms/sync-dashboard", body);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
    * Get alarms by severity
    */
   getAlarmsBySeverity: async (severity) => {

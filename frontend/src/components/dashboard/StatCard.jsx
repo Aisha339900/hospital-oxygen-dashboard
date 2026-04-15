@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiInfo, FiExternalLink, FiArrowUpRight } from 'react-icons/fi';
+import KpiRangeBar from './KpiRangeBar';
 
 function StatCard({ card, openMetricDetails }) {
   const numericDelta = card.delta
@@ -37,6 +38,17 @@ function StatCard({ card, openMetricDetails }) {
       <div className="metric-value-row">
         <span className="metric-value">{card.value}</span>
       </div>
+      {card.range && card.rangeValue != null && Number.isFinite(card.rangeValue) ? (
+        <KpiRangeBar
+          min={card.range.min}
+          max={card.range.max}
+          optimalMin={card.range.optimalMin ?? null}
+          optimalMax={card.range.optimalMax ?? null}
+          value={card.rangeValue}
+          unit={card.range.unit ?? ''}
+          caption={card.range.caption ?? ''}
+        />
+      ) : null}
       <div className="metric-footer">
         <p className="metric-caption">{card.helper}</p>
         {card.delta && (

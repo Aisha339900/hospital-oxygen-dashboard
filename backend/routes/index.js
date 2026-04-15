@@ -61,6 +61,7 @@ router.get("/history/trend-data", historyController.getTrendData);
 // Alarm routes
 router.get("/alarms", alarmController.getAllAlarms);
 router.get("/alarms/active", alarmController.getActiveAlarms);
+router.post("/alarms/sync-dashboard", alarmController.syncDashboardFromClient);
 router.post("/alarms", alarmController.createAlarm);
 router.put("/alarms/:id", alarmController.updateAlarmStatus);
 

@@ -5,7 +5,6 @@
 import {
   measurementService,
   historyService,
-  alarmService,
   systemHealthService,
   backupService,
   demandStatusService,
@@ -235,9 +234,13 @@ export function mapScenarioDemandSupply(demandStatus, supplyStatus) {
 
 export function mapDbAlarmToPanel(a) {
   if (!a) return null;
-  const msg = `${(a.alarm_type || "alarm").replace(/_/g, " ")} — measured ${a.measured_value ?? "n/a"}`;
+  const stored = a.message && String(a.message).trim();
+  const msg = stored
+    ? String(a.message)
+    : `${(a.alarm_type || "alarm").replace(/_/g, " ")} — measured ${a.measured_value ?? "n/a"}`;
   return {
     id: String(a._id ?? a.alarm_id ?? Math.random()),
+    ruleKey: a.rule_key ? String(a.rule_key) : null,
     severity: SEVERITY_BADGE[a.severity] || a.severity || "warning",
     message: msg,
     timestamp: new Date(a.timestamp).getTime(),
@@ -287,7 +290,7 @@ export function trendPointsFromMeasurement(m) {
   if (!m) return [];
   const ts = new Date(m.timestamp).getTime();
   const purity = Number(m.oxygen_purity_percent ?? 0);
-  const flowRate = Number(m.flow_rate_m3h ?? 0);
+  const flowRate = Number(m.molar_flow ?? 0);
   const pressureBar = Number(m.delivery_pressure_bar ?? 0);
   const demandCoverage = Number(m.demand_coverage_percent ?? 0);
   const pressurePsi = pressureBar > 0 ? pressureBar / PSI_TO_BAR : 0;
@@ -386,16 +389,6 @@ export async function loadLiveDashboard() {
     storageLevels = [{ label: "Live", lastMonth: sl, thisMonth: sl }];
   }
 
-  let alarms = [];
-  try {
-    const raw = await alarmService.getActiveAlarms();
-    alarms = (Array.isArray(raw) ? raw : [])
-      .map(mapDbAlarmToPanel)
-      .filter(Boolean);
-  } catch {
-    /* optional */
-  }
-
   let backup = null;
   try {
     const backupPayload = await backupService.getBackupStatus(
@@ -424,7 +417,6 @@ export async function loadLiveDashboard() {
     trendData,
     status,
     storageLevels,
-    alarms,
     backup,
     supplyDemand,
   };
