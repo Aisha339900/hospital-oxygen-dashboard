@@ -2823,13 +2823,29 @@ body {
 }
 
 .badge.warning {
-	background: rgba(251, 191, 36, 0.2);
-	color: #fde68a;
+	background: rgba(251, 191, 36, 0.22);
+	color: var(--warning);
+	border: 1px solid rgba(251, 191, 36, 0.55);
+	font-weight: 600;
 }
 
 .badge.critical {
-	background: rgba(248, 113, 113, 0.2);
-	color: #fca5a5;
+	background: rgba(248, 113, 113, 0.22);
+	color: #fecaca;
+	border: 1px solid rgba(248, 113, 113, 0.55);
+	font-weight: 600;
+}
+
+:root.light-mode .badge.warning {
+	background: rgba(251, 191, 36, 0.38);
+	color: #92400e;
+	border-color: rgba(217, 119, 6, 0.55);
+}
+
+:root.light-mode .badge.critical {
+	background: rgba(248, 113, 113, 0.32);
+	color: #991b1b;
+	border-color: rgba(220, 38, 38, 0.45);
 }
 
 .badge.info {

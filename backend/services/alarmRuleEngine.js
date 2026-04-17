@@ -166,29 +166,6 @@ function evaluateDashboardRules({ latestPoint, supplyDemand, backupData }) {
     }
   }
 
-  const storageUtilization = toNumber(backupData?.utilization);
-  if (storageUtilization !== null) {
-    if (storageUtilization < 15) {
-      push(
-        "storage-critical",
-        "low_backup_utilization",
-        "critical",
-        `Backup utilization critical (${storageUtilization.toFixed(1)}%).`,
-        storageUtilization,
-        15,
-      );
-    } else if (storageUtilization < 25) {
-      push(
-        "storage-warning",
-        "low_backup_utilization",
-        "warning",
-        `Backup utilization low (${storageUtilization.toFixed(1)}%).`,
-        storageUtilization,
-        25,
-      );
-    }
-  }
-
   const pressureBar = toNumber(
     latestPoint.pressureBar ??
       (latestPoint.pressure ?? 0) * PSI_TO_BAR,

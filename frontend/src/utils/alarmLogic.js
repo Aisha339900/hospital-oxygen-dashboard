@@ -393,23 +393,6 @@ const generateAlarmPanelData = ({
     }
   }
 
-  const storageUtilization = toNumber(backupData?.utilization);
-  if (storageUtilization !== null) {
-    if (storageUtilization < 15) {
-      addAlarm(
-        "storage-critical",
-        "critical",
-        `Backup utilization critical (${storageUtilization.toFixed(1)}%).`,
-      );
-    } else if (storageUtilization < 25) {
-      addAlarm(
-        "storage-warning",
-        "warning",
-        `Backup utilization low (${storageUtilization.toFixed(1)}%).`,
-      );
-    }
-  }
-
   const pressureBar = toNumber(
     latestPoint.pressureBar ?? (latestPoint.pressure ?? 0) * PSI_TO_BAR,
   );
