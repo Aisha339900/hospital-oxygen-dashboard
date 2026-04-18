@@ -13,8 +13,7 @@ import {
   emailDashboardPdf,
   getDashboardEmailStatus,
 } from "../../services/reportService";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { DEFAULT_DASHBOARD_REPORT_OPTIONS } from "../../utils/dashboardReportSnapshot";
 
 function triggerBlobDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -31,31 +30,28 @@ function triggerBlobDownload(blob, filename) {
 const DEFAULT_EMAIL_STATUS = {
   configured: false,
   available: false,
-  message: "Checking email delivery status...",
+  message: "Checking email…",
 };
 
 export default function DashboardReportActions({
   buildSnapshot,
-  defaultEmail = "",
-  canUseEmail,
+  userEmail = "",
+  canUseEmail = false,
 }) {
   const rootRef = useRef(null);
   const toastTimerRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState(defaultEmail || "");
   const [busyAction, setBusyAction] = useState("");
   const [notice, setNotice] = useState(null);
   const [emailStatus, setEmailStatus] = useState(DEFAULT_EMAIL_STATUS);
   const [emailStatusLoading, setEmailStatusLoading] = useState(false);
-
-  useEffect(() => {
-    if (defaultEmail) {
-      setEmailTo((prev) => prev || defaultEmail);
-    }
-  }, [defaultEmail]);
+  const [reportOptions, setReportOptions] = useState(() => ({
+    ...DEFAULT_DASHBOARD_REPORT_OPTIONS,
+  }));
 
   useEffect(() => {
     if (!open) {
+      setNotice(null);
       return undefined;
     }
     const onDoc = (e) => {
@@ -76,8 +72,12 @@ export default function DashboardReportActions({
     [],
   );
 
-  const showNotice = useCallback((text, isError) => {
-    setNotice({ text, isError: Boolean(isError) });
+  const showNotice = useCallback((text, isError, anchor = "email") => {
+    setNotice({
+      text,
+      isError: Boolean(isError),
+      anchor: anchor === "download" ? "download" : "email",
+    });
     if (toastTimerRef.current) {
       window.clearTimeout(toastTimerRef.current);
     }
@@ -110,32 +110,52 @@ export default function DashboardReportActions({
     }
   }, [open, refreshEmailStatus]);
 
-  const normalizedEmail = emailTo.trim().toLowerCase();
-  const hasEmailValue = normalizedEmail.length > 0;
-  const emailLooksValid = !hasEmailValue || EMAIL_RE.test(normalizedEmail);
-
   const emailBlockedReason = useMemo(() => {
-    if (!canUseEmail) return "Sign in to email the report.";
-    if (emailStatusLoading) return "Checking email delivery...";
-    if (!emailStatus.available) return emailStatus.message;
-    if (hasEmailValue && !emailLooksValid) return "Enter a valid recipient email address.";
+    if (!canUseEmail) {
+      return "Sign in to email the report.";
+    }
+    const trimmed = String(userEmail || "").trim();
+    if (!trimmed) {
+      return "Your account has no email on file.";
+    }
+    if (emailStatusLoading) {
+      return "Checking email service…";
+    }
+    if (!emailStatus.available) {
+      return emailStatus.message;
+    }
     return "";
-  }, [canUseEmail, emailLooksValid, emailStatus.available, emailStatus.message, emailStatusLoading, hasEmailValue]);
+  }, [
+    canUseEmail,
+    userEmail,
+    emailStatusLoading,
+    emailStatus.available,
+    emailStatus.message,
+  ]);
 
-  const canSendEmail = canUseEmail && !emailStatusLoading && emailStatus.available && emailLooksValid;
+  const canSendEmail =
+    canUseEmail &&
+    String(userEmail || "").trim().length > 0 &&
+    !emailStatusLoading &&
+    emailStatus.available;
+
   const busy = Boolean(busyAction);
+
+  const toggleReportOption = (key) => {
+    setReportOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleDownload = async () => {
     setBusyAction("download");
     setNotice(null);
     try {
-      const snapshot = buildSnapshot();
+      const snapshot = buildSnapshot(reportOptions);
       const blob = await downloadDashboardPdf(snapshot);
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       triggerBlobDownload(blob, `oxygen-dashboard-report-${stamp}.pdf`);
-      showNotice("PDF report downloaded.", false);
+      showNotice("PDF downloaded.", false, "download");
     } catch (e) {
-      showNotice(e?.message || "Download failed.", true);
+      showNotice(e?.message || "Download failed.", true, "download");
     } finally {
       setBusyAction("");
     }
@@ -143,18 +163,21 @@ export default function DashboardReportActions({
 
   const handleSendEmail = async () => {
     if (!canSendEmail) {
-      showNotice(emailBlockedReason || "Email delivery is unavailable.", true);
+      showNotice(emailBlockedReason || "Email is not available.", true);
       return;
     }
-
     setBusyAction("email");
     setNotice(null);
     try {
-      const snapshot = buildSnapshot();
-      const response = await emailDashboardPdf(snapshot, normalizedEmail);
-      showNotice(response?.message || "Report emailed successfully.", false);
+      const snapshot = buildSnapshot(reportOptions);
+      const response = await emailDashboardPdf(snapshot);
+      showNotice(
+        response?.message || "Report emailed to your account.",
+        false,
+        "email",
+      );
     } catch (e) {
-      showNotice(e?.message || "Email failed.", true);
+      showNotice(e?.message || "Email failed.", true, "email");
       refreshEmailStatus();
     } finally {
       setBusyAction("");
@@ -178,112 +201,107 @@ export default function DashboardReportActions({
       </button>
 
       {open ? (
-        <section className="report-actions__panel" aria-label="Export report options">
-          <div className="report-actions__hero">
-            <div className="report-actions__hero-icon">
+        <section className="report-actions__panel" aria-label="Export report">
+          <div className="report-actions__hero report-actions__hero--compact">
+            <div className="report-actions__hero-icon report-actions__hero-icon--compact">
               <FiFileText aria-hidden />
             </div>
             <div className="report-actions__hero-copy">
-              <p className="report-actions__eyebrow">Shift-ready export</p>
-              <h3>Share a clean monitoring snapshot</h3>
-              <p>
-                Generate a polished PDF of the current dashboard or send it directly by email.
-              </p>
+              <p className="report-actions__eyebrow">Dashboard report</p>
+              <h3>Export PDF</h3>
+              <p>Choose sections, then download or email to your account.</p>
             </div>
           </div>
 
-          <div className="report-actions__grid">
-            <div className="report-actions__card">
-              <div className="report-actions__card-head">
-                <span className="report-actions__card-icon report-actions__card-icon--download">
-                  <FiDownload aria-hidden />
-                </span>
-                <div>
-                  <h4>Download PDF</h4>
-                  <p>Save a report for handoff notes, audits, or local archives.</p>
-                </div>
+          <fieldset className="report-actions__customize">
+            <legend className="report-actions__customize-legend">Report sections</legend>
+            <p className="report-actions__customize-hint">
+              Uncheck anything you do not need in the PDF.
+            </p>
+            <div className="report-actions__customize-grid">
+              {[
+                ["includeOverview", "Operational summary"],
+                ["includeKpis", "KPI cards"],
+                ["includeStreams", "All streams"],
+                ["includeSupplyDemand", "Demand & supply"],
+                ["includeTrendSample", "Trend sample table"],
+                ["includeAlarms", "Alarms list"],
+              ].map(([key, label]) => (
+                <label key={key} className="report-actions__check">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(reportOptions[key])}
+                    onChange={() => toggleReportOption(key)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="report-actions__actions-stack">
+            <button
+              type="button"
+              className="report-actions__primary report-actions__primary--full"
+              disabled={busy}
+              onClick={handleDownload}
+            >
+              <FiDownload aria-hidden />
+              <span>{busyAction === "download" ? "Preparing…" : "Download PDF"}</span>
+            </button>
+            {notice && notice.anchor === "download" ? (
+              <div
+                className={`report-actions__toast report-actions__toast--inline ${notice.isError ? "report-actions__toast--error" : ""}`}
+                role="status"
+              >
+                {notice.text}
               </div>
+            ) : null}
+
+            <div className="report-actions__email-block">
+              {canUseEmail && String(userEmail || "").trim() ? (
+                <p className="report-actions__email-to">
+                  <FiMail aria-hidden />
+                  <span>
+                    Report will be sent to your email: <strong>{String(userEmail).trim()}</strong>
+                  </span>
+                </p>
+              ) : null}
               <button
                 type="button"
-                className="report-actions__primary"
-                disabled={busy}
-                onClick={handleDownload}
+                className="report-actions__secondary report-actions__secondary--full"
+                disabled={busy || !canSendEmail}
+                onClick={handleSendEmail}
               >
-                {busyAction === "download" ? "Preparing report..." : "Download report"}
+                <FiSend aria-hidden />
+                <span>{busyAction === "email" ? "Sending…" : "Email report"}</span>
               </button>
-            </div>
-
-            <div className="report-actions__card">
-              <div className="report-actions__card-head">
-                <span className="report-actions__card-icon report-actions__card-icon--email">
-                  <FiMail aria-hidden />
-                </span>
-                <div>
-                  <h4>Email PDF</h4>
-                  <p>Deliver the current report to a recipient without leaving the dashboard.</p>
-                </div>
-              </div>
-
               <div
                 className={`report-actions__status ${emailStatus.available ? "is-ready" : "is-offline"}`}
                 role="status"
               >
-                {emailStatus.available ? <FiCheckCircle aria-hidden /> : <FiAlertCircle aria-hidden />}
-                <span>{emailStatusLoading ? "Checking email service..." : emailStatus.message}</span>
+                {emailStatusLoading ? (
+                  <FiAlertCircle aria-hidden />
+                ) : emailStatus.available ? (
+                  <FiCheckCircle aria-hidden />
+                ) : (
+                  <FiAlertCircle aria-hidden />
+                )}
+                <span>
+                  {emailStatusLoading ? "Checking email service…" : emailStatus.message}
+                </span>
               </div>
-
-              <label className="report-actions__label" htmlFor="report-email-to">
-                Recipient email
-              </label>
-              <input
-                id="report-email-to"
-                type="email"
-                className={`report-actions__input ${hasEmailValue && !emailLooksValid ? "is-invalid" : ""}`}
-                placeholder={defaultEmail || "you@hospital.org"}
-                value={emailTo}
-                onChange={(e) => setEmailTo(e.target.value)}
-                autoComplete="email"
-              />
-              <p className="report-actions__helper">
-                Leave blank to use the signed-in account email when available.
-              </p>
-              {emailBlockedReason ? (
-                <p className="report-actions__helper report-actions__helper--warning">
-                  {emailBlockedReason}
-                </p>
+              {notice && notice.anchor === "email" ? (
+                <div
+                  className={`report-actions__toast report-actions__toast--inline ${notice.isError ? "report-actions__toast--error" : ""}`}
+                  role="status"
+                >
+                  {notice.text}
+                </div>
               ) : null}
-
-              <div className="report-actions__email-row">
-                <button
-                  type="button"
-                  className="report-actions__primary"
-                  disabled={busy || !canSendEmail}
-                  onClick={handleSendEmail}
-                >
-                  <FiSend aria-hidden />
-                  <span>{busyAction === "email" ? "Sending..." : "Send by email"}</span>
-                </button>
-                <button
-                  type="button"
-                  className="report-actions__secondary"
-                  disabled={busy || emailStatusLoading}
-                  onClick={refreshEmailStatus}
-                >
-                  Refresh status
-                </button>
-              </div>
             </div>
           </div>
         </section>
-      ) : null}
-
-      {notice ? (
-        <div
-          className={`report-actions__toast ${notice.isError ? "report-actions__toast--error" : ""}`}
-          role="status"
-        >
-          {notice.text}
-        </div>
       ) : null}
     </div>
   );

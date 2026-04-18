@@ -201,7 +201,7 @@ export default function AuthPage({
             O2
           </div>
           <div>
-            <div className="auth-brand-title">Oxygen Dashboard</div>
+            <div className="auth-brand-title">Hospital Oxygen Dashboard</div>
             <div className="brand-sub">Secure access</div>
           </div>
         </div>

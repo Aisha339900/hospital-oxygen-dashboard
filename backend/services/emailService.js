@@ -50,7 +50,7 @@ async function getSmtpStatus() {
   }
 }
 
-const APP_NAME = process.env.EMAIL_APP_NAME || "Oxygen Dashboard";
+const APP_NAME = process.env.EMAIL_APP_NAME || "Hospital Oxygen Dashboard";
 
 /**
  * @param {{ to: string; resetLink: string }} params
@@ -135,10 +135,143 @@ async function sendDashboardReportPdf({ to, pdfBuffer, filename }) {
   });
 }
 
+/**
+ * @param {{ to: string | string[]; alarm: any }} params
+ */
+async function sendAlarmNotificationEmail({ to, alarm }) {
+  const transporter = createTransporter();
+  if (!transporter) {
+    throw new Error("SMTP is not configured.");
+  }
+
+  const from =
+    process.env.EMAIL_FROM ||
+    process.env.SMTP_FROM ||
+    `"${APP_NAME}" <${process.env.SMTP_USER}>`;
+
+  const severity = String(alarm?.severity || "medium").toUpperCase();
+  const alarmType = String(alarm?.alarm_type || "alarm").replace(/_/g, " ");
+  const measuredValue =
+    typeof alarm?.measured_value === "number"
+      ? String(alarm.measured_value)
+      : "n/a";
+  const thresholdValue =
+    typeof alarm?.threshold_value === "number"
+      ? String(alarm.threshold_value)
+      : "n/a";
+  const occurredAt = alarm?.timestamp
+    ? new Date(alarm.timestamp).toISOString()
+    : new Date().toISOString();
+
+  const streamLabel =
+    alarm?.streamDisplayName ||
+    (alarm?.stream_id ? String(alarm.stream_id) : "plant-wide");
+
+  const subject = `[${severity}] ${APP_NAME} alarm: ${alarmType}`;
+  const text = [
+    `${APP_NAME} detected an active alarm.`,
+    "",
+    `Type: ${alarmType}`,
+    `Severity: ${severity}`,
+    `Message: ${alarm?.message || "No message provided."}`,
+    `Measured value: ${measuredValue}`,
+    `Threshold value: ${thresholdValue}`,
+    `Stream: ${streamLabel}`,
+    `Occurred at: ${occurredAt}`,
+  ].join("\n");
+
+  const html = `
+    <p><strong>${escapeHtml(APP_NAME)}</strong> detected an active alarm.</p>
+    <table cellpadding="6" cellspacing="0" border="0">
+      <tr><td><strong>Type</strong></td><td>${escapeHtml(alarmType)}</td></tr>
+      <tr><td><strong>Severity</strong></td><td>${escapeHtml(severity)}</td></tr>
+      <tr><td><strong>Message</strong></td><td>${escapeHtml(alarm?.message || "No message provided.")}</td></tr>
+      <tr><td><strong>Measured value</strong></td><td>${escapeHtml(measuredValue)}</td></tr>
+      <tr><td><strong>Threshold value</strong></td><td>${escapeHtml(thresholdValue)}</td></tr>
+      <tr><td><strong>Stream</strong></td><td>${escapeHtml(streamLabel)}</td></tr>
+      <tr><td><strong>Occurred at</strong></td><td>${escapeHtml(occurredAt)}</td></tr>
+    </table>
+  `;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+    html,
+  });
+}
+
+/**
+ * One email listing active alerts relevant after the user switched to a stream.
+ * @param {{ to: string | string[]; streamId: string; streamName: string; alarms: any[] }} params
+ */
+async function sendStreamFocusAlarmDigestEmail({ to, streamId, streamName, alarms }) {
+  const transporter = createTransporter();
+  if (!transporter) {
+    throw new Error("SMTP is not configured.");
+  }
+
+  const from =
+    process.env.EMAIL_FROM ||
+    process.env.SMTP_FROM ||
+    `"${APP_NAME}" <${process.env.SMTP_USER}>`;
+
+  const n = alarms.length;
+  const focusLabel = streamName || streamId;
+  const subject = `${APP_NAME} — ${n} active alert(s) for ${focusLabel}`;
+
+  const lines = alarms.map((alarm) => {
+    const severity = String(alarm?.severity || "medium").toUpperCase();
+    const alarmType = String(alarm?.alarm_type || "alarm").replace(/_/g, " ");
+    const streamLabel =
+      alarm?.streamDisplayName ||
+      (alarm?.stream_id ? String(alarm.stream_id) : "plant-wide");
+    return `• [${severity}] ${alarmType} — ${alarm?.message || "—"} (stream: ${streamLabel})`;
+  });
+
+  const text = [
+    `You opened stream ${focusLabel} on ${APP_NAME}. The following alert(s) are active:`,
+    "",
+    ...lines,
+    "",
+    `Open the dashboard to review.`,
+  ].join("\n");
+
+  const rows = alarms
+    .map((alarm) => {
+      const severity = String(alarm?.severity || "medium").toUpperCase();
+      const alarmType = String(alarm?.alarm_type || "alarm").replace(/_/g, " ");
+      const streamLabel =
+        alarm?.streamDisplayName ||
+        (alarm?.stream_id ? String(alarm.stream_id) : "plant-wide");
+      return `<tr><td>${escapeHtml(severity)}</td><td>${escapeHtml(alarmType)}</td><td>${escapeHtml(alarm?.message || "—")}</td><td>${escapeHtml(String(streamLabel))}</td></tr>`;
+    })
+    .join("");
+
+  const html = `
+    <p>You opened <strong>${escapeHtml(String(focusLabel))}</strong> on <strong>${escapeHtml(APP_NAME)}</strong>. Active alerts:</p>
+    <table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;">
+      <tr><th>Severity</th><th>Type</th><th>Message</th><th>Stream</th></tr>
+      ${rows}
+    </table>
+  `;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+    html,
+  });
+}
+
 module.exports = {
   isSmtpConfigured,
   createTransporter,
   getSmtpStatus,
   sendPasswordResetEmail,
   sendDashboardReportPdf,
+  sendAlarmNotificationEmail,
+  sendStreamFocusAlarmDigestEmail,
 };

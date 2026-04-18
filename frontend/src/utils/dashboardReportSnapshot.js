@@ -3,6 +3,15 @@
  * Kept JSON-safe (no React nodes / functions).
  */
 
+export const DEFAULT_DASHBOARD_REPORT_OPTIONS = {
+  includeOverview: true,
+  includeKpis: true,
+  includeStreams: true,
+  includeSupplyDemand: true,
+  includeTrendSample: true,
+  includeAlarms: true,
+};
+
 function serializeSupplyDemand(sd) {
   if (!sd || typeof sd !== "object") {
     return null;
@@ -110,6 +119,8 @@ export function buildDashboardReportSnapshot({
   timelineRange,
   trendFeedRange,
   trendData,
+  reportOptions,
+  dashboardTestModeEnabled,
 }) {
   const safeCards = Array.isArray(statCards)
     ? statCards.map((c) => ({
@@ -145,6 +156,11 @@ export function buildDashboardReportSnapshot({
             : Number(r.oxygen_purity_percent),
       }))
     : [];
+
+  const mergedReportOptions = {
+    ...DEFAULT_DASHBOARD_REPORT_OPTIONS,
+    ...(reportOptions && typeof reportOptions === "object" ? reportOptions : {}),
+  };
 
   return {
     version: 1,
@@ -190,6 +206,8 @@ export function buildDashboardReportSnapshot({
         coveragePercent === null || coveragePercent === undefined
           ? null
           : Number(coveragePercent),
+      dashboardTestMode: Boolean(dashboardTestModeEnabled),
     },
+    reportOptions: mergedReportOptions,
   };
 }

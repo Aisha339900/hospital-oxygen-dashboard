@@ -11,7 +11,7 @@ const demandStatusController = require("../controllers/demandStatusController");
 const supplyStatusController = require("../controllers/supplyStatusController");
 const authController = require("../controllers/authController");
 const reportController = require("../controllers/reportController");
-const { requireAuth } = require("../middleware/authMiddleware");
+const { requireAuth, optionalAuth } = require("../middleware/authMiddleware");
 
 // Auth
 router.post("/auth/register", authController.register);
@@ -61,6 +61,11 @@ router.get("/history/trend-data", historyController.getTrendData);
 // Alarm routes
 router.get("/alarms", alarmController.getAllAlarms);
 router.get("/alarms/active", alarmController.getActiveAlarms);
+router.post(
+  "/alarms/sync-dashboard",
+  optionalAuth,
+  alarmController.syncDashboardFromClient,
+);
 router.post("/alarms", alarmController.createAlarm);
 router.put("/alarms/:id", alarmController.updateAlarmStatus);
 

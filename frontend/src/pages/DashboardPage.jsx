@@ -8,6 +8,7 @@ import AlertsPanel from '../components/rightRail/AlertsPanel';
 import BackupPanel from '../components/rightRail/BackupPanel';
 import DemandPanel from '../components/rightRail/DemandPanel';
 import DashboardReportActions from '../components/dashboard/DashboardReportActions';
+import DashboardTestModePanel from '../components/dashboard/DashboardTestModePanel';
 
 
 function DashboardPage({
@@ -36,8 +37,12 @@ function DashboardPage({
   onToggleTheme,
   onOpenSimulationEntry,
   buildReportSnapshot,
-  reportDefaultEmail,
-  reportEmailEnabled,
+  reportUserEmail,
+  reportCanEmail,
+  dashboardTestModeEnabled,
+  onDashboardTestModeToggle,
+  dashboardTestInputs,
+  onDashboardTestInputChange,
 }) {
   return (
     <>
@@ -51,8 +56,8 @@ function DashboardPage({
             typeof buildReportSnapshot === "function" ? (
               <DashboardReportActions
                 buildSnapshot={buildReportSnapshot}
-                defaultEmail={reportDefaultEmail || ""}
-                canUseEmail={Boolean(reportEmailEnabled)}
+                userEmail={reportUserEmail || ""}
+                canUseEmail={Boolean(reportCanEmail)}
               />
             ) : null
           }
@@ -63,6 +68,12 @@ function DashboardPage({
           activeStream={activeStream}
           onStreamChange={onStreamChange}
           currentStreamProcess={currentStreamProcess}
+        />
+        <DashboardTestModePanel
+          enabled={Boolean(dashboardTestModeEnabled)}
+          onToggle={onDashboardTestModeToggle}
+          values={dashboardTestInputs || {}}
+          onChange={onDashboardTestInputChange}
         />
         <div className="stream-trends-divider" role="presentation" aria-hidden="true" />
 

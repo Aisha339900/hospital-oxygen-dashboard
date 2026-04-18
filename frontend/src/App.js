@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   FiBarChart2,
   FiTrendingUp,
@@ -22,10 +28,55 @@ import ChatWidget from "./components/ChatWidget";
 import KPI_DEFINITIONS from "./config/kpiDefinitions.js";
 import TREND_CHARTS from "./config/trendChartsConfig.js";
 import { isAuthEnabled } from "./config/auth.js";
-import { loadLiveDashboard } from "./utils/liveDashboardMapper.js";
+import {
+  loadLiveDashboard,
+  mapDbAlarmToPanel,
+} from "./utils/liveDashboardMapper.js";
 import { buildDashboardReportSnapshot } from "./utils/dashboardReportSnapshot.js";
-import { streamsAPI } from "./services";
+import {
+  generateAlarmPanelData,
+  buildDashboardDerived,
+  getMetricNumericValueForDashboard,
+} from "./utils/alarmLogic.js";
+import { streamsAPI, alarmService } from "./services";
+import { getAlarmEmailSessionId } from "./utils/alarmEmailSession.js";
 import "./App.css";
+
+const MOLAR_FLOW_BANDS_BY_STREAM = {
+  "1": { nominal: 47.838, criticalLow: 38.27, lowUpper: 43.054, normalUpper: 52.622, criticalHigh: 57.406 },
+  "2": { nominal: 47.838, criticalLow: 38.27, lowUpper: 43.054, normalUpper: 52.622, criticalHigh: 57.406 },
+  "3": { nominal: 47.838, criticalLow: 38.27, lowUpper: 43.054, normalUpper: 52.622, criticalHigh: 57.406 },
+  "4": { nominal: 14.351, criticalLow: 11.481, lowUpper: 12.916, normalUpper: 15.786, criticalHigh: 17.221 },
+  "5": { nominal: 33.487, criticalLow: 26.79, lowUpper: 30.138, normalUpper: 36.836, criticalHigh: 40.184 },
+  "6": { nominal: 2.336, criticalLow: 1.869, lowUpper: 2.102, normalUpper: 2.57, criticalHigh: 2.803 },
+  "7": { nominal: 12.016, criticalLow: 9.613, lowUpper: 10.814, normalUpper: 13.218, criticalHigh: 14.419 },
+  "8": { nominal: 2.336, criticalLow: 1.869, lowUpper: 2.102, normalUpper: 2.57, criticalHigh: 2.803 },
+  "9": { nominal: 2.336, criticalLow: 1.869, lowUpper: 2.102, normalUpper: 2.57, criticalHigh: 2.803 },
+};
+
+function buildMolarFlowRange(streamId) {
+  const bands = MOLAR_FLOW_BANDS_BY_STREAM[String(streamId)];
+  if (!bands) {
+    return {
+      min: 0,
+      max: 60,
+      optimalMin: 0,
+      optimalMax: 60,
+      unit: "",
+      caption: "No configured stream band",
+      helper: "stream reference unavailable",
+    };
+  }
+  return {
+    min: 0,
+    max: bands.criticalHigh,
+    optimalMin: bands.lowUpper,
+    optimalMax: bands.normalUpper,
+    unit: "",
+    caption: `Normal ${bands.lowUpper.toFixed(3)}-${bands.normalUpper.toFixed(3)} kmol/h`,
+    helper: `vs previous stream`,
+  };
+}
 
 const normalizeStreamProfiles = (streams) => {
   if (!Array.isArray(streams)) {
@@ -74,13 +125,6 @@ const normalizeStreamProfiles = (streams) => {
     .sort((a, b) => Number(a.id) - Number(b.id));
 };
 
-const normalizeDbValue = (value) => {
-  if (value === "-" || value === null || value === undefined) {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
 
 const KPI_ICON_MAP = {
   droplet: FiDroplet,
@@ -203,9 +247,24 @@ function App() {
   const [backupDemandPreviewUrl, setBackupDemandPreviewUrl] = useState(
     DEFAULT_BACKUP_DEMAND_ASSET_PATH,
   );
+  const [dashboardTestModeEnabled, setDashboardTestModeEnabled] =
+    useState(false);
+  const [dashboardTestInputs, setDashboardTestInputs] = useState({
+    purity: "",
+    flowRate: "",
+    molarFlow: "",
+    pressureBar: "",
+    demandCoverage: "",
+    backupRemaining: "",
+    backupUtilization: "",
+    specificEnergy: "",
+  });
   const alarmPulseTimeoutRef = useRef(null);
   const backupPulseTimeoutRef = useRef(null);
   const demandPulseTimeoutRef = useRef(null);
+  /** First sync after changing stream sends streamChanged so the API can email active alerts for that view. */
+  const lastStreamForSyncRef = useRef(null);
+  const streamChangedForNextSyncRef = useRef(false);
 
   const persistAuth = useCallback((nextAuth) => {
     try {
@@ -327,7 +386,6 @@ function App() {
         setTrendData(live.trendData || []);
         setStatus(live.status);
         setStorageLevels(live.storageLevels);
-        setAlarms(live.alarms);
         setBackup(live.backup);
         setSupplyDemand(live.supplyDemand);
         setLoading(false);
@@ -376,6 +434,154 @@ function App() {
       }
     };
   }, [backupDemandPreviewUrl]);
+
+  const dashboardDerived = useMemo(() => {
+    if (loading || error) {
+      return null;
+    }
+    return buildDashboardDerived({
+      streamProfiles,
+      activeStream,
+      data,
+      supplyDemand,
+      backup,
+      status,
+      dashboardTestModeEnabled,
+      dashboardTestInputs,
+    });
+  }, [
+    loading,
+    error,
+    streamProfiles,
+    activeStream,
+    data,
+    supplyDemand,
+    backup,
+    status,
+    dashboardTestModeEnabled,
+    dashboardTestInputs,
+  ]);
+
+  const currentStreamProcessEarly = useMemo(() => {
+    const idx = streamProfiles.findIndex((p) => p.id === activeStream);
+    return streamProfiles[idx]?.process || null;
+  }, [streamProfiles, activeStream]);
+
+  const getMetricNumericValue = useCallback(
+    (valueKey) => {
+      return getMetricNumericValueForDashboard({
+        valueKey,
+        dashboardTestModeEnabled,
+        dashboardTestInputs,
+        currentStreamProcess: currentStreamProcessEarly,
+        status,
+        displayCoveragePercent: dashboardDerived?.displayCoveragePercent ?? null,
+      });
+    },
+    [
+      dashboardTestModeEnabled,
+      dashboardTestInputs,
+      currentStreamProcessEarly,
+      status,
+      dashboardDerived?.displayCoveragePercent,
+    ],
+  );
+
+  const ruleDerivedAlarms = useMemo(() => {
+    if (!dashboardDerived) {
+      return [];
+    }
+    return generateAlarmPanelData({
+      latestPoint: dashboardDerived.alarmEvaluationPoint,
+      supplyDemand: dashboardDerived.effectiveSupplyDemand,
+      backupData: dashboardDerived.effectiveBackupForAlarms,
+      streamId: activeStream,
+    });
+  }, [dashboardDerived, activeStream]);
+
+  const displayAlarms = useMemo(() => {
+    if (dashboardTestModeEnabled) {
+      return ruleDerivedAlarms;
+    }
+    const ackByKey = new Map(
+      alarms.map((a) => [a.ruleKey, a]).filter(([k]) => k),
+    );
+    return ruleDerivedAlarms.map((r) => {
+      const db = ackByKey.get(r.ruleKey);
+      return {
+        ...r,
+        acknowledged: db?.acknowledged ?? false,
+        id: db?.id ?? r.id,
+      };
+    });
+  }, [ruleDerivedAlarms, alarms, dashboardTestModeEnabled]);
+
+  const unacknowledgedAlarms = useMemo(
+    () => displayAlarms.filter((a) => !a.acknowledged).length,
+    [displayAlarms],
+  );
+
+  useEffect(() => {
+    if (!activeStream) {
+      return;
+    }
+    if (lastStreamForSyncRef.current === null) {
+      lastStreamForSyncRef.current = activeStream;
+      return;
+    }
+    if (lastStreamForSyncRef.current !== activeStream) {
+      streamChangedForNextSyncRef.current = true;
+      lastStreamForSyncRef.current = activeStream;
+    }
+  }, [activeStream]);
+
+  useEffect(() => {
+    if (loading || !activeStream || dashboardTestModeEnabled || !dashboardDerived) {
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const streamChanged = streamChangedForNextSyncRef.current;
+        streamChangedForNextSyncRef.current = false;
+        const pt = dashboardDerived.alarmEvaluationPoint;
+        await alarmService.syncDashboardAlarms({
+          streamId: activeStream,
+          streamChanged,
+          alarmEmailSessionId: getAlarmEmailSessionId(),
+          latestPoint: {
+            purity: pt.purity,
+            flowRate: pt.flowRate,
+            pressureBar: pt.pressureBar,
+            pressure: pt.pressure,
+            specificEnergy: pt.specificEnergy,
+            timestamp: pt.timestamp,
+          },
+          supplyDemand: dashboardDerived.effectiveSupplyDemand,
+          backupData: dashboardDerived.effectiveBackupForAlarms,
+        });
+        if (cancelled) {
+          return;
+        }
+        const raw = await alarmService.getActiveAlarms({
+          params: { streamId: activeStream },
+        });
+        if (cancelled) {
+          return;
+        }
+        setAlarms(
+          (Array.isArray(raw) ? raw : [])
+            .map(mapDbAlarmToPanel)
+            .filter(Boolean),
+        );
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeStream, dashboardTestModeEnabled, dashboardDerived]);
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -486,6 +692,14 @@ function App() {
     persistAuth(null);
   }, [persistAuth]);
 
+  const handleDashboardTestModeToggle = useCallback((next) => {
+    setDashboardTestModeEnabled(next);
+  }, []);
+
+  const handleDashboardTestInputChange = useCallback((key, raw) => {
+    setDashboardTestInputs((prev) => ({ ...prev, [key]: raw }));
+  }, []);
+
   const authRequired = isAuthEnabled() && !auth;
 
 
@@ -495,6 +709,10 @@ function App() {
 
   if (error) {
     return <div className="error">{error}</div>;
+  }
+
+  if (!dashboardDerived) {
+    return <div className="error">No trend data available.</div>;
   }
 
   const streamOptions = streamProfiles;
@@ -507,29 +725,19 @@ function App() {
     currentStreamIndex > 0 ? streamProfiles[currentStreamIndex - 1] : null;
   const currentStreamProcess = currentStreamProfile?.process || null;
   const previousStreamProcess = previousStreamProfile?.process || null;
-  const latestPoint = data[data.length - 1];
+  const {
+    latestPoint,
+    coveragePercent,
+    displayCoveragePercent
+  } = dashboardDerived;
   const earliestPoint = data[0];
-  const unacknowledgedAlarms = alarms.filter((a) => !a.acknowledged).length;
   const lastUpdated = status?.timestamp
     ? formatTimestamp(status.timestamp)
     : "N/A";
-  const coveragePercent = (() => {
-    if (!supplyDemand?.supply) {
-      return null;
-    }
-    const coverage =
-      supplyDemand.supply.coveragePercent ??
-      supplyDemand.supply.coverage_percent;
-    if (coverage === null || coverage === undefined) {
-      return null;
-    }
-    const parsed = Number(coverage);
-    return Number.isFinite(parsed) ? parsed : null;
-  })();
 
   const supplyIsHealthy =
-    coveragePercent !== null
-      ? coveragePercent >= 95
+    displayCoveragePercent !== null
+      ? displayCoveragePercent >= 95
       : Boolean(
           (supplyDemand?.supply?.status || supplyDemand?.status || "")
             .toLowerCase()
@@ -545,7 +753,9 @@ function App() {
       ).toFixed(2)} kmol/h`
     : "No trend window";
   const supplyFill =
-    coveragePercent !== null ? Math.min(Math.max(coveragePercent, 0), 140) : 0;
+    displayCoveragePercent !== null
+      ? Math.min(Math.max(displayCoveragePercent, 0), 140)
+      : 0;
   const canInlineLogPreview =
     !!logUpload &&
     (logUpload.type === "application/pdf" ||
@@ -591,27 +801,11 @@ function App() {
     if (!key) {
       return `0${suffix}`;
     }
-
-    const streamReadingMap = {
-      purity: normalizeDbValue(currentStreamProcess?.oxygenPurityPercent),
-      flowRate: normalizeDbValue(currentStreamProcess?.flowRateM3h),
-      pressure: normalizeDbValue(currentStreamProcess?.deliveryPressureBar),
-    };
-
-    const reading =
-      streamReadingMap[key] !== undefined && streamReadingMap[key] !== null
-        ? streamReadingMap[key]
-        : status?.[key];
-
-    if (reading === undefined || reading === null || reading === "") {
-      return `0${suffix}`;
-    }
-    
-    const value = Number(reading);
-    if (Number.isFinite(value)) {
+    const value = getMetricNumericValue(key);
+    if (value !== null && Number.isFinite(value)) {
       return `${value.toFixed(2)}${suffix}`;
     }
-    return `${reading}${suffix}`;
+    return `0${suffix}`;
   };
 
   const previewData = (rows, limit = 6) => {
@@ -752,10 +946,13 @@ function App() {
     },
   ];
 
+  const molarFlowRange = buildMolarFlowRange(activeStream);
   const statCards = KPI_DEFINITIONS.map((kpi) => ({
     id: kpi.id,
     label: kpi.label,
     value: metricValue(kpi.valueKey, kpi.valueSuffix || ""),
+    range: kpi.id === "molarFlow" ? { ...molarFlowRange } : kpi.range,
+    rangeValue: getMetricNumericValue(kpi.valueKey),
     delta:
       kpi.id === "purity"
         ? compareStreamValue(
@@ -763,10 +960,10 @@ function App() {
             previousStreamProcess?.oxygenPurityPercent,
             kpi.deltaSuffix || "",
           )
-        : kpi.id === "flowRate"
+        : kpi.id === "molarFlow"
           ? compareStreamValue(
-              currentStreamProcess?.flowRateM3h,
-              previousStreamProcess?.flowRateM3h,
+              currentStreamProcess?.molarFlow,
+              previousStreamProcess?.molarFlow,
               kpi.deltaSuffix || "",
             )
           : kpi.id === "pressure"
@@ -778,7 +975,7 @@ function App() {
             : kpi.id === "coverage"
               ? ""
               : trendValue(kpi.deltaKey, kpi.deltaSuffix || ""),
-    helper: kpi.helper,
+    helper: kpi.id === "molarFlow" ? molarFlowRange.helper : kpi.helper,
     icon: KPI_ICON_MAP[kpi.iconKey] || null,
     tone: kpi.tone,
     description: kpi.description,
@@ -805,6 +1002,7 @@ function App() {
     }
     setActiveStream(nextStreamId);
   };
+
   const isLogsView = activeView === "Logs";
   const isBackupDemandView = activeView === "Backup & Demand";
   const isSettingsView = activeView === "Settings";
@@ -920,7 +1118,7 @@ function App() {
                 openMetricDetails={openMetricDetails}
                 openChartDetails={openChartDetails}
                 trendData={trendData}
-                alarms={alarms}
+                alarms={displayAlarms}
                 formatTimeAgo={formatTimeAgo}
                 backup={backup}
                 supplyDemand={supplyDemand}
@@ -942,7 +1140,7 @@ function App() {
                 isDarkMode={isDarkMode}
                 onToggleTheme={toggleTheme}
                 onOpenSimulationEntry={handleOpenSimulationEntry}
-                buildReportSnapshot={() =>
+                buildReportSnapshot={(reportOptions) =>
                   buildDashboardReportSnapshot({
                     formatTimeAgo,
                     currentStreamLabel: currentStreamProfile?.label || "-",
@@ -951,23 +1149,29 @@ function App() {
                     lastUpdated,
                     status,
                     statCards,
-                    alarms,
+                    alarms: displayAlarms,
                     backup,
                     supplyDemand,
-                    coveragePercent,
+                    coveragePercent: displayCoveragePercent ?? coveragePercent,
                     supplyIsHealthy,
                     unacknowledgedAlarms,
                     trendsAreSimulated,
                     timelineRange,
                     trendFeedRange,
                     trendData,
+                    reportOptions,
+                    dashboardTestModeEnabled,
                   })
                 }
-                reportDefaultEmail={auth?.email || ""}
-                reportEmailEnabled={
+                reportUserEmail={auth?.email || ""}
+                reportCanEmail={
                   typeof window !== "undefined" &&
                   Boolean(localStorage.getItem("authToken"))
                 }
+                dashboardTestModeEnabled={dashboardTestModeEnabled}
+                onDashboardTestModeToggle={handleDashboardTestModeToggle}
+                dashboardTestInputs={dashboardTestInputs}
+                onDashboardTestInputChange={handleDashboardTestInputChange}
               />
             )}
           </main>

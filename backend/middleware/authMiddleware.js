@@ -17,4 +17,20 @@ function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth, JWT_SECRET };
+/** Sets req.userId when a valid Bearer token is present; otherwise continues without it. */
+function optionalAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) {
+    return next();
+  }
+  const token = header.slice(7);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.sub;
+  } catch {
+    /* treat as anonymous */
+  }
+  next();
+}
+
+module.exports = { requireAuth, optionalAuth, JWT_SECRET };

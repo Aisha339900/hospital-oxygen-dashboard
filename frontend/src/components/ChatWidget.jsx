@@ -182,7 +182,7 @@ export default function ChatWidget({ webhookUrl }) {
         <div className="chat-panel" role="dialog" aria-label="Dashboard chatbot">
           <div className="chat-panel__header">
             <div className="chat-panel__title">
-              <div className="chat-panel__name">Oxygen Dashboard Assistant</div>
+              <div className="chat-panel__name">Hospital Oxygen Dashboard Assistant</div>
             </div>
             <button
               className="chat-panel__close"
