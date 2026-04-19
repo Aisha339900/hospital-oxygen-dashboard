@@ -25,6 +25,7 @@ import PredictiveAnalyticsPage from "./pages/PredictiveAnalyticsPage";
 import AuthPage from "./pages/AuthPage";
 import DetailModal from "./components/DetailModal";
 import ChatWidget from "./components/ChatWidget";
+import { LoadingSpinner } from "./components/LoadingSpinner";
 import KPI_DEFINITIONS from "./config/kpiDefinitions.js";
 import TREND_CHARTS from "./config/trendChartsConfig.js";
 import { isAuthEnabled } from "./config/auth.js";
@@ -771,7 +772,7 @@ function App() {
 
 
   if (loading) {
-    return <div className="loading">Loading dashboard...</div>;
+    return <LoadingSpinner message="Loading dashboard..." />;
   }
 
   if (error) {

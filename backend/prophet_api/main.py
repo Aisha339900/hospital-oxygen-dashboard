@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -24,9 +25,11 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "hospital-oxygen-dashboard")
 MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION", "measurementhistories")
 DEFAULT_FORECAST_DAYS = 7
+FORECAST_CACHE_TTL_SECONDS = int(os.getenv("FORECAST_CACHE_TTL_SECONDS", "300"))
 
 mongo_client: MongoClient | None = None
 measurement_collection: Collection | None = None
+forecast_cache: Dict[int, Dict[str, Any]] = {}
 
 
 def to_float(value: Any) -> float | None:
@@ -279,7 +282,17 @@ def forecast_oxygen_purity(
         description="Number of future days to forecast.",
     ),
 ) -> Dict[str, Any]:
+    cached = forecast_cache.get(days)
+    now = time.time()
+    if cached and (now - cached["cached_at"]) < FORECAST_CACHE_TTL_SECONDS:
+        return cached["payload"]
+
     collection = get_measurement_collection()
     history_frame = load_history_frame(collection)
     model = train_model(history_frame)
-    return build_forecast_payload(model, history_frame, days)
+    payload = build_forecast_payload(model, history_frame, days)
+    forecast_cache[days] = {
+        "cached_at": now,
+        "payload": payload,
+    }
+    return payload
