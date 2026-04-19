@@ -40,10 +40,33 @@ function ProcessUnitNode({ data }) {
 
 function StreamTagNode({ data }) {
   const withValue = Boolean(data.scenarioValue);
+  const onPick = typeof data.onStreamSelect === "function" ? data.onStreamSelect : null;
+  const selected = Boolean(data.streamInspectorSelected);
   return (
     <div
-      className={`stream-tag-node${withValue ? " stream-tag-node--with-value" : ""}`}
+      className={`stream-tag-node${withValue ? " stream-tag-node--with-value" : ""}${onPick ? " stream-tag-node--selectable" : ""}${selected ? " stream-tag-node--inspector-selected" : ""}`}
       title={data.tooltip}
+      role={onPick ? "button" : undefined}
+      tabIndex={onPick ? 0 : undefined}
+      onClick={
+        onPick
+          ? (e) => {
+              e.stopPropagation();
+              onPick(String(data.n));
+            }
+          : undefined
+      }
+      onKeyDown={
+        onPick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onPick(String(data.n));
+              }
+            }
+          : undefined
+      }
     >
       <Handle type="source" position={Position.Right} />
       <span className="stream-tag-node__n">{data.n}</span>
@@ -55,8 +78,34 @@ function StreamTagNode({ data }) {
 }
 
 function OutletNode({ data }) {
+  const onPick = typeof data.onStreamSelect === "function" ? data.onStreamSelect : null;
+  const selected = Boolean(data.streamInspectorSelected);
   return (
-    <div className="outlet-node" title={data.tooltip}>
+    <div
+      className={`outlet-node${onPick ? " outlet-node--selectable" : ""}${selected ? " outlet-node--inspector-selected" : ""}`}
+      title={data.tooltip}
+      role={onPick ? "button" : undefined}
+      tabIndex={onPick ? 0 : undefined}
+      onClick={
+        onPick
+          ? (e) => {
+              e.stopPropagation();
+              onPick(String(data.n));
+            }
+          : undefined
+      }
+      onKeyDown={
+        onPick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onPick(String(data.n));
+              }
+            }
+          : undefined
+      }
+    >
       <Handle type="target" position={Position.Left} id="in" />
       <span className="outlet-node__n">{data.n}</span>
       {data.sub ? <span className="outlet-node__sub">{data.sub}</span> : null}
@@ -422,23 +471,64 @@ function FlowCanvas({
   whatIf = null,
   trainingStepIndex = 0,
   trainingSteps = [],
+  selectedStreamId = null,
+  onStreamSelect,
 }) {
   const { nodes: mergedNodes, edges: mergedEdges } = useMemo(
     () => buildFlowState(variant, whatIf, trainingStepIndex, trainingSteps),
     [variant, whatIf, trainingStepIndex, trainingSteps],
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(mergedNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(mergedEdges);
+  const nodesWithInspector = useMemo(
+    () =>
+      mergedNodes.map((n) => {
+        const sel =
+          selectedStreamId &&
+          (n.type === "streamTag" || n.type === "outlet") &&
+          String(n.data?.n) === String(selectedStreamId);
+        const extra = sel ? " process-flow-node--inspector-selected" : "";
+        return {
+          ...n,
+          selectable: false,
+          className: `${n.className || ""}${extra}`.trim(),
+          data: {
+            ...n.data,
+            onStreamSelect,
+            streamInspectorSelected: Boolean(sel),
+          },
+        };
+      }),
+    [mergedNodes, onStreamSelect, selectedStreamId],
+  );
+
+  const edgesWithInspector = useMemo(
+    () =>
+      mergedEdges.map((e) => {
+        const label = String(e.label ?? "");
+        const mat = /^[1-9]$/.test(label);
+        const sel = Boolean(selectedStreamId && mat && label === String(selectedStreamId));
+        const extra = sel ? " process-flow-edge--inspector-selected" : "";
+        return {
+          ...e,
+          selectable: mat,
+          className: `${e.className || ""}${extra}`.trim(),
+          interactionWidth: mat ? 28 : e.interactionWidth,
+        };
+      }),
+    [mergedEdges, selectedStreamId],
+  );
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithInspector);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(edgesWithInspector);
   const { fitView } = useReactFlow();
 
   useEffect(() => {
-    setNodes(mergedNodes);
-  }, [mergedNodes, setNodes]);
+    setNodes(nodesWithInspector);
+  }, [nodesWithInspector, setNodes]);
 
   useEffect(() => {
-    setEdges(mergedEdges);
-  }, [mergedEdges, setEdges]);
+    setEdges(edgesWithInspector);
+  }, [edgesWithInspector, setEdges]);
 
   useEffect(() => {
     const t = requestAnimationFrame(() => {
@@ -454,6 +544,17 @@ function FlowCanvas({
     [],
   );
 
+  const onEdgeClick = useCallback(
+    (_evt, edge) => {
+      const id = String(edge?.label ?? "").trim();
+      if (/^[1-9]$/.test(id)) {
+        onStreamSelect?.(id);
+      }
+      setEdges((eds) => eds.map((e) => ({ ...e, selected: false })));
+    },
+    [onStreamSelect, setEdges],
+  );
+
   const defaultEdgeOptions = useMemo(
     () => ({
       type: "smoothstep",
@@ -467,12 +568,14 @@ function FlowCanvas({
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
+      onEdgeClick={onEdgeClick}
       nodeTypes={nodeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
       onInit={onInit}
       nodesDraggable={false}
       nodesConnectable={false}
-      elementsSelectable={false}
+      elementsSelectable
+      selectNodesOnDrag={false}
       panOnScroll
       zoomOnScroll
       minZoom={0.4}
@@ -490,6 +593,8 @@ export default function ProcessFlowDiagram({
   variant = "default",
   trainingStepIndex = 0,
   trainingSteps = [],
+  selectedStreamId = null,
+  onStreamSelect,
 }) {
   return (
     <div className="process-flow-diagram">
@@ -498,6 +603,8 @@ export default function ProcessFlowDiagram({
           variant={variant}
           trainingStepIndex={trainingStepIndex}
           trainingSteps={trainingSteps}
+          selectedStreamId={selectedStreamId}
+          onStreamSelect={onStreamSelect}
         />
       </ReactFlowProvider>
     </div>

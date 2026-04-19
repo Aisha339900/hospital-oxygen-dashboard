@@ -49,10 +49,14 @@ export async function getDashboardEmailStatus() {
  */
 export async function emailDashboardPdf(snapshot, to) {
   try {
-    const res = await apiClient.post("/reports/dashboard-email", {
-      snapshot,
-      ...(to && String(to).trim() ? { to: String(to).trim() } : {}),
-    });
+    const res = await apiClient.post(
+      "/reports/dashboard-email",
+      {
+        snapshot,
+        ...(to && String(to).trim() ? { to: String(to).trim() } : {}),
+      },
+      { timeout: 60000 },
+    );
     return res.data;
   } catch (err) {
     throw new Error(await readErrorMessage(err));

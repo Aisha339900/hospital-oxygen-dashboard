@@ -242,6 +242,9 @@ function drawPageChrome(doc, snapshot) {
   const innerBottom = doc.page.height - doc.page.margins.bottom;
   const ruleY = innerBottom - 14;
   const footerTextY = innerBottom - 10;
+  // PDFKit does not provide a reliable doc.page.pageNumber; count chrome paints on this doc only.
+  doc._hospitalReportFooterPage = (doc._hospitalReportFooterPage || 0) + 1;
+  const pageLabel = String(doc._hospitalReportFooterPage);
 
   doc.save();
   doc.rect(0, 0, doc.page.width, doc.page.height).fill("#ffffff");
@@ -261,7 +264,7 @@ function drawPageChrome(doc, snapshot) {
   doc
     .fontSize(8)
     .fillColor(COLORS.muted)
-    .text(`Page ${doc.page.pageNumber}`, right - 70, footerTextY, { width: 70, align: "right", lineBreak: false });
+    .text("Page " + pageLabel, right - 70, footerTextY, { width: 70, align: "right", lineBreak: false });
   doc.restore();
 }
 
@@ -597,7 +600,9 @@ function buildDashboardPdfBuffer(snapshot) {
 
     const left = doc.page.margins.left;
     const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const drawHeader = () => drawPageChrome(doc, snapshot);
+    const drawHeader = () => {
+      drawPageChrome(doc, snapshot);
+    };
     drawHeader();
 
     const ro = snapshot.reportOptions || sanitizeReportOptions();

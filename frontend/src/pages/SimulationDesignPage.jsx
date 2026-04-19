@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FiLayers, FiSun, FiMoon } from "react-icons/fi";
 import ProcessFlowDiagram from "../components/simulation/ProcessFlowDiagram";
+import StreamDetailsDrawer from "../components/StreamDetailsDrawer";
+import { streamDetailsData } from "../data/streamDetailsData";
 
 const DEFAULT_LEDE = "This diagram represents the oxygen production system based on the Aspen Plus model. It is used for training and understanding process behavior. Highlighted steps guide you through how each unit contributes to oxygen purity, flow, and system performance.";
 
@@ -75,6 +77,16 @@ export default function SimulationDesignPage({
   const lede = entry ? entry.lede : DEFAULT_LEDE;
 
   const [trainingStep, setTrainingStep] = useState(0);
+  const [selectedStreamId, setSelectedStreamId] = useState(null);
+
+  const handleStreamClick = useCallback((id) => {
+    setSelectedStreamId(id);
+  }, []);
+
+  const selectedStream = useMemo(
+    () => streamDetailsData.find((s) => s.id === selectedStreamId) ?? null,
+    [selectedStreamId],
+  );
 
   const diagramVariant =
     entryMode === "training" ? "training" : "default";
@@ -151,6 +163,8 @@ export default function SimulationDesignPage({
             variant={diagramVariant}
             trainingStepIndex={trainingStep}
             trainingSteps={SIMULATION_TRAINING_STEPS}
+            selectedStreamId={selectedStreamId}
+            onStreamSelect={handleStreamClick}
           />
         </div>
       </section>
@@ -176,6 +190,13 @@ export default function SimulationDesignPage({
     </li>
   </ul>
 </section>
+
+      {selectedStream ? (
+        <StreamDetailsDrawer
+          stream={selectedStream}
+          onClose={() => setSelectedStreamId(null)}
+        />
+      ) : null}
     </div>
   );
 }
