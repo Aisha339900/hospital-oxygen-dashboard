@@ -59,13 +59,16 @@ function SettingsPage({
             <label className="setting-toggle" htmlFor="email-alerts">
               <div className="setting-toggle-copy">
                 <p className="setting-title">Receive email alerts</p>
-                <span className="setting-subtext">Send a summary when new alarms fire.</span>
+                <span className="setting-subtext">
+                  When on, your signed-in email is added for alarm emails.
+                </span>
               </div>
               <input
                 id="email-alerts"
                 type="checkbox"
+                className="setting-toggle-checkbox"
                 checked={settings.emailAlerts}
-                onChange={() => onToggleSetting('emailAlerts')}
+                onChange={() => onToggleSetting("emailAlerts")}
               />
             </label>
           </div>
@@ -76,7 +79,7 @@ function SettingsPage({
             <FiLogOut aria-hidden="true" />
             <div>
               <h2>Session</h2>
-              <p>Sign out of this console.</p>
+              <p>Sign out of your account.</p>
             </div>
           </div>
           <div className="settings-card-content">

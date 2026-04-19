@@ -44,7 +44,8 @@ exports.syncDashboardFromClient = async (req, res) => {
       return res.status(400).json({ message: "latestPoint is required." });
     }
     const recipientEmails = [];
-    if (req.userId) {
+    const emailAlertsEnabled = req.body?.emailAlerts !== false;
+    if (emailAlertsEnabled && req.userId) {
       const user = await User.findById(req.userId).select("email").lean();
       if (user?.email) {
         recipientEmails.push(String(user.email).trim().toLowerCase());

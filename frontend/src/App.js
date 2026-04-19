@@ -140,6 +140,30 @@ const DEFAULT_SETTINGS = {
   emailAlerts: true,
 };
 
+const SETTINGS_STORAGE_KEY = "oxygen.settings.v1";
+
+function readInitialSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return { ...DEFAULT_SETTINGS };
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return { ...DEFAULT_SETTINGS };
+    }
+    return {
+      ...DEFAULT_SETTINGS,
+      emailAlerts:
+        typeof parsed.emailAlerts === "boolean"
+          ? parsed.emailAlerts
+          : DEFAULT_SETTINGS.emailAlerts,
+    };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
 const AUTH_STORAGE_KEY = "oxygen.auth.v1";
 const DEFAULT_LOG_ASSET_PATH = `${process.env.PUBLIC_URL || ""}/data-results.pdf`;
 const DEFAULT_LOG_METADATA = {
@@ -264,7 +288,7 @@ function App() {
     ...DEFAULT_LOG_METADATA,
   }));
   const [logPreviewUrl, setLogPreviewUrl] = useState(DEFAULT_LOG_ASSET_PATH);
-  const [settings, setSettings] = useState({ ...DEFAULT_SETTINGS });
+  const [settings, setSettings] = useState(readInitialSettings);
   const [isDarkMode, setIsDarkMode] = useState(readInitialIsDark);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [auth, setAuth] = useState(readInitialAuth);
@@ -577,6 +601,7 @@ function App() {
           streamId: activeStream,
           streamChanged,
           alarmEmailSessionId: getAlarmEmailSessionId(),
+          emailAlerts: settings.emailAlerts,
           latestPoint: {
             purity: pt.purity,
             flowRate: pt.flowRate,
@@ -609,7 +634,13 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [loading, activeStream, dashboardTestModeEnabled, dashboardDerived]);
+  }, [
+    loading,
+    activeStream,
+    dashboardTestModeEnabled,
+    dashboardDerived,
+    settings.emailAlerts,
+  ]);
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -692,7 +723,15 @@ function App() {
   };
 
   const toggleSetting = (key) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+    setSettings((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
   };
   const handleAuthSuccess = useCallback(
     (payload) => {
