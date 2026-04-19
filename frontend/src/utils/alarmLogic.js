@@ -1,3 +1,5 @@
+import { STORAGE_LEVEL_THRESHOLDS } from "./backupStorageLevel";
+
 const PSI_TO_BAR = 0.0689476;
 
 const STREAM_SCOPED_RULE_KEYS = new Set([
@@ -215,16 +217,33 @@ function buildEffectiveBackupForAlarms({
   }
   const rem = parseOptionalNumber(dashboardTestInputs.backupRemaining);
   const util = parseOptionalNumber(dashboardTestInputs.backupUtilization);
+  const storage = parseOptionalNumber(dashboardTestInputs.storageLevel);
   const base = backup || {
     mode: "Simulated",
     utilization: 30,
     remainingLiters: 8000,
+    storageLevel: 30,
   };
+  const effectiveStorageLevel =
+    storage !== null ? storage : Number(base.storageLevel);
+  const hasEffectiveStorage = Number.isFinite(effectiveStorageLevel);
+  let effectiveMode = base.mode;
+  if (hasEffectiveStorage) {
+    if (effectiveStorageLevel < STORAGE_LEVEL_THRESHOLDS.warningMin) {
+      effectiveMode = "critical";
+    } else if (effectiveStorageLevel < 100) {
+      effectiveMode = "active";
+    } else {
+      effectiveMode = "standby";
+    }
+  }
   return {
     ...base,
+    mode: effectiveMode,
     remainingLiters: rem !== null ? rem : base.remainingLiters,
     remaining_liters: rem !== null ? rem : base.remainingLiters,
     utilization: util !== null ? util : base.utilization,
+    storageLevel: hasEffectiveStorage ? effectiveStorageLevel : base.storageLevel,
   };
 }
 
@@ -374,22 +393,39 @@ const generateAlarmPanelData = ({
     }
   }
 
-  const remainingLiters = toNumber(
-    backupData?.remaining_liters ?? backupData?.remainingLiters,
-  );
-  if (remainingLiters !== null) {
-    if (remainingLiters < 500) {
+  const storageLevel = toNumber(backupData?.storageLevel);
+  if (storageLevel !== null) {
+    if (storageLevel < STORAGE_LEVEL_THRESHOLDS.warningMin) {
       addAlarm(
-        "backup-volume-critical",
+        "backup-storage-critical",
         "critical",
-        `Backup oxygen critically low (${remainingLiters.toFixed(0)} L remaining).`,
+        `Backup storage critically low (${storageLevel.toFixed(2)}%).`,
       );
-    } else if (remainingLiters < 5000) {
+    } else if (storageLevel < STORAGE_LEVEL_THRESHOLDS.healthyMin) {
       addAlarm(
-        "backup-volume-warning",
+        "backup-storage-warning",
         "warning",
-        `Backup oxygen running low (${remainingLiters.toFixed(0)} L remaining).`,
+        `Backup storage running low (${storageLevel.toFixed(2)}%).`,
       );
+    }
+  } else {
+    const remainingLiters = toNumber(
+      backupData?.remaining_liters ?? backupData?.remainingLiters,
+    );
+    if (remainingLiters !== null) {
+      if (remainingLiters < 500) {
+        addAlarm(
+          "backup-volume-critical",
+          "critical",
+          `Backup oxygen critically low (${remainingLiters.toFixed(0)} L remaining).`,
+        );
+      } else if (remainingLiters < 5000) {
+        addAlarm(
+          "backup-volume-warning",
+          "warning",
+          `Backup oxygen running low (${remainingLiters.toFixed(0)} L remaining).`,
+        );
+      }
     }
   }
 

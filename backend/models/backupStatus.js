@@ -25,6 +25,12 @@ const backupStatusSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
+    storageLevel: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
     status: {
       type: String,
       default: "safe",

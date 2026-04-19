@@ -17,6 +17,11 @@ const backupPanelDefaults = {
       label: "Standby",
       description: "Backup ready to engage if pressure drops.",
     },
+    critical: {
+      id: "critical",
+      label: "Critical",
+      description: "Backup reserve is critically low and requires urgent action.",
+    },
   },
   thresholds: {
     lowLevel: 20,

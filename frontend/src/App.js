@@ -154,6 +154,32 @@ const DEFAULT_BACKUP_DEMAND_METADATA = {
   type: "application/pdf",
   lastModified: 0,
 };
+const BACKUP_TOTAL_CAPACITY_LITERS = 50000;
+const LINKED_BACKUP_TEST_FIELDS = new Set([
+  "storageLevel",
+  "backupUtilization",
+  "backupRemaining",
+]);
+
+function parseDashboardInputNumber(raw) {
+  if (raw === "" || raw === null || raw === undefined) {
+    return null;
+  }
+  const n = Number(String(raw).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function formatLinkedNumber(value, decimals = 2) {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  const rounded = Number(value.toFixed(decimals));
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+}
 
 const isBlobUrl = (url) => typeof url === "string" && url.startsWith("blob:");
 
@@ -255,6 +281,7 @@ function App() {
     molarFlow: "",
     pressureBar: "",
     demandCoverage: "",
+    storageLevel: "",
     backupRemaining: "",
     backupUtilization: "",
     specificEnergy: "",
@@ -697,8 +724,48 @@ function App() {
   }, []);
 
   const handleDashboardTestInputChange = useCallback((key, raw) => {
-    setDashboardTestInputs((prev) => ({ ...prev, [key]: raw }));
-  }, []);
+    setDashboardTestInputs((prev) => {
+      if (!dashboardTestModeEnabled || !LINKED_BACKUP_TEST_FIELDS.has(key)) {
+        return { ...prev, [key]: raw };
+      }
+
+      if (String(raw ?? "").trim() === "") {
+        return {
+          ...prev,
+          storageLevel: "",
+          backupUtilization: "",
+          backupRemaining: "",
+        };
+      }
+
+      const parsed = parseDashboardInputNumber(raw);
+      if (parsed === null) {
+        return { ...prev, [key]: raw };
+      }
+
+      let storageLevel;
+      if (key === "storageLevel") {
+        storageLevel = clampNumber(parsed, 0, 100);
+      } else if (key === "backupUtilization") {
+        const utilization = clampNumber(parsed, 0, 100);
+        storageLevel = 100 - utilization;
+      } else {
+        const remaining = clampNumber(parsed, 0, BACKUP_TOTAL_CAPACITY_LITERS);
+        storageLevel = (remaining / BACKUP_TOTAL_CAPACITY_LITERS) * 100;
+      }
+
+      const utilization = 100 - storageLevel;
+      const remainingLiters =
+        (storageLevel / 100) * BACKUP_TOTAL_CAPACITY_LITERS;
+
+      return {
+        ...prev,
+        storageLevel: formatLinkedNumber(storageLevel, 2),
+        backupUtilization: formatLinkedNumber(utilization, 2),
+        backupRemaining: formatLinkedNumber(remainingLiters, 0),
+      };
+    });
+  }, [dashboardTestModeEnabled]);
 
   const authRequired = isAuthEnabled() && !auth;
 
@@ -728,7 +795,8 @@ function App() {
   const {
     latestPoint,
     coveragePercent,
-    displayCoveragePercent
+    displayCoveragePercent,
+    effectiveBackupForAlarms,
   } = dashboardDerived;
   const earliestPoint = data[0];
   const lastUpdated = status?.timestamp
@@ -756,6 +824,7 @@ function App() {
     displayCoveragePercent !== null
       ? Math.min(Math.max(displayCoveragePercent, 0), 140)
       : 0;
+  const backupForDisplay = effectiveBackupForAlarms || backup;
   const canInlineLogPreview =
     !!logUpload &&
     (logUpload.type === "application/pdf" ||
@@ -1120,7 +1189,7 @@ function App() {
                 trendData={trendData}
                 alarms={displayAlarms}
                 formatTimeAgo={formatTimeAgo}
-                backup={backup}
+                backup={backupForDisplay}
                 supplyDemand={supplyDemand}
                 supplyFill={supplyFill}
                 supplyIsHealthy={supplyIsHealthy}
@@ -1150,7 +1219,7 @@ function App() {
                     status,
                     statCards,
                     alarms: displayAlarms,
-                    backup,
+                    backup: backupForDisplay,
                     supplyDemand,
                     coveragePercent: displayCoveragePercent ?? coveragePercent,
                     supplyIsHealthy,

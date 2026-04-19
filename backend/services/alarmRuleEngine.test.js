@@ -51,7 +51,29 @@ describe("evaluateDashboardRules", () => {
     assert.equal(r.alarmType, "low_demand_coverage");
   });
 
-  test("remaining liters between 500 and 5000 produces backup volume warning", () => {
+  test("storage level between 15% and 25% produces backup storage warning", () => {
+    const rows = evaluateDashboardRules({
+      latestPoint: basePoint,
+      supplyDemand: { supply: { coverage_percent: 100 } },
+      backupData: { storageLevel: 20.34, remaining_liters: 3000, utilization: 30 },
+    });
+    const r = rows.find((x) => x.ruleKey === "backup-storage-warning");
+    assert.ok(r);
+    assert.equal(r.alarmType, "low_backup_volume");
+  });
+
+  test("storage level below 15% produces backup storage critical", () => {
+    const rows = evaluateDashboardRules({
+      latestPoint: basePoint,
+      supplyDemand: { supply: { coverage_percent: 100 } },
+      backupData: { storageLevel: 12.1, remaining_liters: 3000, utilization: 30 },
+    });
+    const r = rows.find((x) => x.ruleKey === "backup-storage-critical");
+    assert.ok(r);
+    assert.equal(r.alarmType, "low_backup_volume");
+  });
+
+  test("falls back to remaining liters thresholds when storage level is missing", () => {
     const rows = evaluateDashboardRules({
       latestPoint: basePoint,
       supplyDemand: { supply: { coverage_percent: 100 } },

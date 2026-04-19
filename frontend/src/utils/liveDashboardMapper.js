@@ -278,10 +278,17 @@ export function mapBackupStatusToPanel(payload) {
     ? Number(litersCandidate)
     : 0;
 
+  const storageLevelCandidate =
+    source.storageLevel ?? null;
+  const storageLevel = Number.isFinite(Number(storageLevelCandidate))
+    ? Number(storageLevelCandidate)
+    : 0;
+
   return {
     mode,
     utilization,
     remainingLiters,
+    storageLevel,
   };
 }
 
@@ -385,7 +392,7 @@ export async function loadLiveDashboard() {
 
   let storageLevels = mapStorageMonthlyPayload(storage);
   if (storageLevels.length === 0 && current) {
-    const sl = Number(current.storage_level_percent ?? 0);
+    const sl = Number(current.storageLevel ?? 0);
     storageLevels = [{ label: "Live", lastMonth: sl, thisMonth: sl }];
   }
 

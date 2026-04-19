@@ -1,4 +1,10 @@
 import React from 'react';
+import StatusProgressBar from './StatusProgressBar';
+import {
+  clampStorageLevelPercent,
+  formatStorageLevelPercent,
+  getStorageLevelStatus,
+} from '../../utils/backupStorageLevel';
 
 function BackupPanel({ backup, backupPanelPulse }) {
   if (!backup) {
@@ -16,6 +22,9 @@ function BackupPanel({ backup, backupPanelPulse }) {
     typeof backup.mode === "string" && backup.mode.length
       ? backup.mode.toUpperCase()
       : "STANDBY";
+  const { level, status, message } = getStorageLevelStatus(backup.storageLevel);
+  const storageLevelText = formatStorageLevelPercent(level);
+  const storageLevelFill = clampStorageLevelPercent(level);
 
   return (
     <section className={`right-card backup-panel ${backupPanelPulse ? 'pulse' : ''}`}>
@@ -34,6 +43,13 @@ function BackupPanel({ backup, backupPanelPulse }) {
           <strong>{formattedRemaining}</strong>
         </div>
       </div>
+      <StatusProgressBar
+        label="Storage Level"
+        valueText={storageLevelText}
+        progressPercent={storageLevelFill}
+        status={status}
+        message={message}
+      />
     </section>
   );
 }

@@ -7,6 +7,7 @@ const FIELD_CFG = [
   { key: "molarFlow", label: "Molar flow", suffix: "kmol/h", step: "0.001" },
   { key: "pressureBar", label: "Delivery pressure", suffix: "bar", step: "0.1" },
   { key: "demandCoverage", label: "Demand coverage", suffix: "%", step: "1" },
+  { key: "storageLevel", label: "Storage level", suffix: "%", step: "0.01" },
   { key: "backupRemaining", label: "Backup remaining", suffix: "L", step: "10" },
   { key: "backupUtilization", label: "Backup utilization", suffix: "%", step: "1" },
   { key: "specificEnergy", label: "Specific energy", suffix: "kWh/Nm³", step: "0.05" },

@@ -47,6 +47,7 @@ function buildBackupData(backupDoc) {
     utilization: Number(backupDoc.utilization_percent ?? 0),
     remainingLiters: Number(backupDoc.remaining_liters ?? 0),
     remaining_liters: Number(backupDoc.remaining_liters ?? 0),
+    storageLevel: toFiniteNumber(backupDoc.storageLevel),
   };
 }
 

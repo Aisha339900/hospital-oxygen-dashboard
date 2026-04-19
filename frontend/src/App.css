@@ -2904,6 +2904,64 @@ body {
 	font-size: 0.78rem;
 }
 
+.status-progress {
+	margin-top: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 12px;
+	border-top: 1px solid var(--border);
+}
+
+.status-progress__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 12px;
+}
+
+.status-progress__header p {
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.status-progress__track {
+	height: 10px;
+}
+
+.status-progress__fill.healthy {
+	background: linear-gradient(90deg, #22c55e, #34d399);
+}
+
+.status-progress__fill.warning {
+	background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.status-progress__fill.critical {
+	background: linear-gradient(90deg, #ef4444, #fb7185);
+}
+
+.status-progress__message {
+	font-size: 0.83rem;
+	font-weight: 600;
+}
+
+.status-progress__message.healthy {
+	color: var(--success);
+}
+
+.status-progress__message.warning {
+	color: var(--warning);
+}
+
+.status-progress__message.critical {
+	color: #fecaca;
+}
+
+:root.light-mode .status-progress__message.critical {
+	color: #b91c1c;
+}
+
 .demand-row {
 	display: flex;
 	justify-content: space-between;

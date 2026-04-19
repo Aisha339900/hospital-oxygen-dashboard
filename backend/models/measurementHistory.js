@@ -40,7 +40,7 @@ const measurementHistorySchema = new mongoose.Schema({
       type: valueWithMinSchema,
       required: true,
     },
-    storage_level: {
+    storageLevel: {
       type: percentageValueSchema,
       required: true,
     },

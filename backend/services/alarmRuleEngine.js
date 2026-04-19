@@ -4,6 +4,10 @@
  */
 
 const PSI_TO_BAR = 0.0689476;
+const STORAGE_LEVEL_THRESHOLDS = {
+  healthyMin: 25,
+  warningMin: 15,
+};
 
 function toNumber(value) {
   if (typeof value === "number") {
@@ -141,28 +145,51 @@ function evaluateDashboardRules({ latestPoint, supplyDemand, backupData }) {
     }
   }
 
-  const remainingLiters = toNumber(
-    backupData?.remaining_liters ?? backupData?.remainingLiters,
-  );
-  if (remainingLiters !== null) {
-    if (remainingLiters < 500) {
+  const storageLevel = toNumber(backupData?.storageLevel);
+  if (storageLevel !== null) {
+    if (storageLevel < STORAGE_LEVEL_THRESHOLDS.warningMin) {
       push(
-        "backup-volume-critical",
+        "backup-storage-critical",
         "low_backup_volume",
         "critical",
-        `Backup oxygen critically low (${remainingLiters.toFixed(0)} L remaining).`,
-        remainingLiters,
-        500,
+        `Backup storage critically low (${storageLevel.toFixed(2)}%).`,
+        storageLevel,
+        STORAGE_LEVEL_THRESHOLDS.warningMin,
       );
-    } else if (remainingLiters < 5000) {
+    } else if (storageLevel < STORAGE_LEVEL_THRESHOLDS.healthyMin) {
       push(
-        "backup-volume-warning",
+        "backup-storage-warning",
         "low_backup_volume",
         "warning",
-        `Backup oxygen running low (${remainingLiters.toFixed(0)} L remaining).`,
-        remainingLiters,
-        5000,
+        `Backup storage running low (${storageLevel.toFixed(2)}%).`,
+        storageLevel,
+        STORAGE_LEVEL_THRESHOLDS.healthyMin,
       );
+    }
+  } else {
+    const remainingLiters = toNumber(
+      backupData?.remaining_liters ?? backupData?.remainingLiters,
+    );
+    if (remainingLiters !== null) {
+      if (remainingLiters < 500) {
+        push(
+          "backup-volume-critical",
+          "low_backup_volume",
+          "critical",
+          `Backup oxygen critically low (${remainingLiters.toFixed(0)} L remaining).`,
+          remainingLiters,
+          500,
+        );
+      } else if (remainingLiters < 5000) {
+        push(
+          "backup-volume-warning",
+          "low_backup_volume",
+          "warning",
+          `Backup oxygen running low (${remainingLiters.toFixed(0)} L remaining).`,
+          remainingLiters,
+          5000,
+        );
+      }
     }
   }
 

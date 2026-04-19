@@ -45,4 +45,16 @@ describe('evaluateDashboardRules', () => {
 
     expect(rows.some((row) => row.alarmType === 'high_pressure')).toBe(true);
   });
+
+  test('generates a backup storage warning when storage level is below 25%', () => {
+    const rows = evaluateDashboardRules({
+      ...nominalInput,
+      backupData: {
+        ...nominalInput.backupData,
+        storageLevel: 20.5,
+      },
+    });
+
+    expect(rows.some((row) => row.ruleKey === 'backup-storage-warning')).toBe(true);
+  });
 });

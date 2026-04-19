@@ -24,7 +24,7 @@ const systemMeasurementSchema = new mongoose.Schema({
     min: 0,
     max: 100,
   },
-  storage_level_percent: {
+  storageLevel: {
     type: Number,
     min: 0,
     max: 100,

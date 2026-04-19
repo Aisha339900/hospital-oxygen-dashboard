@@ -114,15 +114,15 @@ exports.getStorageLevelMonthly = async (req, res) => {
     }).sort({ date: 1 });
 
     res.json({
-      metric: "storage_level",
+      metric: "storageLevel",
       period: "monthly_comparison",
       lastMonth: lastMonthData.map((d) => ({
         date: d.date,
-        value: d.measurements.storage_level.value,
+        value: d.measurements.storageLevel.value,
       })),
       thisMonth: currentMonthData.map((d) => ({
         date: d.date,
-        value: d.measurements.storage_level.value,
+        value: d.measurements.storageLevel.value,
       })),
     });
   } catch (error) {
