@@ -40,7 +40,7 @@ export default function DashboardTestModePanel({
       </div>
       <p className="dashboard-test-mode__lede">
         Enter values to run the same alarm rules as live data. Leave a field empty to use the
-        current reading. Flow alarms: warning below 80 m³/h, critical below 40 m³/h.
+        current reading.
       </p>
       {enabled ? (
         <div className="dashboard-test-mode__grid">

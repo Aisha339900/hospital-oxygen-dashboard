@@ -12,6 +12,11 @@ const {
   qualifyRuleKeyForStream,
   isStreamScopedRuleKey,
 } = require("./alarmRuleEngine");
+const {
+  shouldSendAlarmNotification,
+  sendAlarmActivatedNotifications,
+  sendStreamFocusAlarmDigest,
+} = require("./alarmNotificationService");
 
 const DEFAULT_SCENARIO = "normal";
 
@@ -47,7 +52,6 @@ function buildBackupData(backupDoc) {
     utilization: Number(backupDoc.utilization_percent ?? 0),
     remainingLiters: Number(backupDoc.remaining_liters ?? 0),
     remaining_liters: Number(backupDoc.remaining_liters ?? 0),
-    storageLevel: toFiniteNumber(backupDoc.storageLevel),
   };
 }
 
@@ -64,7 +68,20 @@ function mapComputedRows(computed, streamId) {
   });
 }
 
-async function upsertRuleAlarmsFromComputed(rows, syncContextStreamId) {
+async function upsertRuleAlarmsFromComputed(
+  rows,
+  syncContextStreamId,
+  notifyOpts = {},
+) {
+  const notificationRecipientEmails = Array.isArray(
+    notifyOpts.recipientEmails,
+  )
+    ? notifyOpts.recipientEmails
+    : [];
+  const streamChanged = Boolean(notifyOpts.streamChanged);
+  const alarmEmailSessionId = String(
+    notifyOpts.alarmEmailSessionId || "",
+  ).trim();
   const activeKeys = rows.map((c) => c.ruleKey);
   const streamId =
     syncContextStreamId !== undefined && syncContextStreamId !== null
@@ -148,8 +165,16 @@ async function upsertRuleAlarmsFromComputed(rows, syncContextStreamId) {
   for (const row of rows) {
     const alarmId = stableAlarmId(row.ruleKey);
     const existing = await findExistingAlarm(row);
+    let shouldNotify = false;
+    let alarmForNotification = null;
 
     if (existing) {
+      shouldNotify =
+        existing.status !== "active" && shouldSendAlarmNotification({
+          ...existing.toObject?.(),
+          ...row,
+          status: "active",
+        });
       existing.status = "active";
       existing.stream_id = row.stream_id;
       existing.measured_value = row.measuredValue;
@@ -159,6 +184,7 @@ async function upsertRuleAlarmsFromComputed(rows, syncContextStreamId) {
       existing.alarm_type = row.alarmType;
       existing.timestamp = new Date();
       await existing.save();
+      alarmForNotification = existing;
     } else {
       const doc = new Alarm({
         alarm_id: alarmId,
@@ -173,6 +199,41 @@ async function upsertRuleAlarmsFromComputed(rows, syncContextStreamId) {
         timestamp: new Date(),
       });
       await doc.save();
+      shouldNotify = shouldSendAlarmNotification(doc);
+      alarmForNotification = doc;
+    }
+
+    if (shouldNotify && alarmForNotification && !streamChanged) {
+      try {
+        await sendAlarmActivatedNotifications(alarmForNotification, {
+          recipientEmails: notificationRecipientEmails,
+        });
+      } catch (error) {
+        console.error("sendAlarmActivatedNotifications:", error);
+      }
+    }
+  }
+
+  if (streamChanged && streamId) {
+    try {
+      const activeForView = await Alarm.find({
+        status: "active",
+        rule_key: { $exists: true, $ne: null },
+        $or: [{ stream_id: streamId }, { stream_id: null }],
+      }).lean();
+      const qualifying = activeForView.filter((a) =>
+        shouldSendAlarmNotification(a),
+      );
+      if (qualifying.length) {
+        await sendStreamFocusAlarmDigest({
+          streamId,
+          alarms: qualifying,
+          recipientEmails: notificationRecipientEmails,
+          alarmEmailSessionId,
+        });
+      }
+    } catch (error) {
+      console.error("sendStreamFocusAlarmDigest:", error);
     }
   }
 
@@ -203,7 +264,18 @@ async function syncDashboardFromClientPayload(payload) {
     backupData,
   });
   const rows = mapComputedRows(computed, streamId);
-  return upsertRuleAlarmsFromComputed(rows, streamId);
+  const recipientEmails = Array.isArray(payload?.recipientEmails)
+    ? payload.recipientEmails
+    : [];
+  const streamChanged = Boolean(payload?.streamChanged);
+  const alarmEmailSessionId = String(
+    payload?.alarmEmailSessionId || "",
+  ).trim();
+  return upsertRuleAlarmsFromComputed(rows, streamId, {
+    recipientEmails,
+    streamChanged,
+    alarmEmailSessionId,
+  });
 }
 
 /**
@@ -264,7 +336,10 @@ async function syncDashboardRuleAlarms(opts = {}) {
     backupData,
   });
   const rows = mapComputedRows(computed, streamId);
-  return upsertRuleAlarmsFromComputed(rows, streamId);
+  return upsertRuleAlarmsFromComputed(rows, streamId, {
+    recipientEmails: [],
+    streamChanged: false,
+  });
 }
 
 module.exports = {
