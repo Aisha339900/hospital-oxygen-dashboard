@@ -49,13 +49,14 @@ router.get(
 );
 
 // History/Trend routes
-router.get("/history/oxygen-purity", historyController.getOxygenPurityTrend);
-router.get("/history/flow-rate", historyController.getFlowRateTrend);
-router.get("/history/pressure", historyController.getPressureTrend);
-router.get(
-  "/history/storage-monthly",
-  historyController.getStorageLevelMonthly,
-);
+// Legacy history routes for removed charts:
+// router.get("/history/oxygen-purity", historyController.getOxygenPurityTrend);
+// router.get("/history/flow-rate", historyController.getFlowRateTrend);
+// router.get("/history/pressure", historyController.getPressureTrend);
+// router.get(
+//   "/history/storage-monthly",
+//   historyController.getStorageLevelMonthly,
+// );
 router.get("/history/trend-data", historyController.getTrendData);
 
 // Alarm routes

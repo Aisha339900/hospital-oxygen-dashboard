@@ -327,30 +327,19 @@ export async function loadLiveDashboard() {
     /* no current snapshot */
   }
 
-  let purity = { data: [] };
-  let flow = { data: [] };
-  let pressure = { data: [] };
-  let storage = { lastMonth: [], thisMonth: [] };
   let trendDataPayload = { data: [] };
   try {
-    [purity, flow, pressure, storage, trendDataPayload] = await Promise.all([
-      historyService.getOxygenPurityTrend(),
-      historyService.getFlowRateTrend(),
-      historyService.getPressureTrend(),
-      historyService.getStorageLevelMonthly(),
-      historyService.getTrendData(),
-    ]);
+    trendDataPayload = await historyService.getTrendData();
   } catch {
-    /* history optional */
+    /* trend data optional */
   }
 
   const trendData = Array.isArray(trendDataPayload?.data)
     ? trendDataPayload.data
     : [];
 
-  const dc = Number(current?.demand_coverage_percent ?? 0);
-  let merged = mergeHistoryTrendRows(purity, flow, pressure, dc);
-  if (merged.length === 0 && current) {
+  let merged = [];
+  if (current) {
     merged = trendPointsFromMeasurement(current);
   }
 
@@ -390,11 +379,7 @@ export async function loadLiveDashboard() {
     status.demandCoverage = resolvedCoverage;
   }
 
-  let storageLevels = mapStorageMonthlyPayload(storage);
-  if (storageLevels.length === 0 && current) {
-    const sl = Number(current.storageLevel ?? 0);
-    storageLevels = [{ label: "Live", lastMonth: sl, thisMonth: sl }];
-  }
+  const storageLevels = [];
 
   let backup = null;
   try {
