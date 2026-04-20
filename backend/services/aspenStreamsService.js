@@ -65,8 +65,32 @@ async function findAspenStreamById(streamId) {
   return streams.find((s) => String(s.stream_id) === id) || null;
 }
 
+/**
+ * Returns a human-friendly stream display name for email copy.
+ * Falls back to the configured label or the raw id when Aspen data is unavailable.
+ *
+ * @param {string|number} streamId
+ * @returns {Promise<string>}
+ */
+async function resolveStreamDisplayName(streamId) {
+  if (streamId === undefined || streamId === null || streamId === "") {
+    return "plant-wide";
+  }
+
+  const id = String(streamId);
+  const stream = await findAspenStreamById(id);
+  if (stream?.label) {
+    return stream.label;
+  }
+  if (stream?.stream_name) {
+    return String(stream.stream_name);
+  }
+  return STREAM_LABELS[id] || `Stream ${id}`;
+}
+
 module.exports = {
   loadLatestAspenStreams,
   findAspenStreamById,
+  resolveStreamDisplayName,
   mapAspenStream,
 };
