@@ -22,3 +22,14 @@ export function getAlarmEmailSessionId() {
     return "";
   }
 }
+
+export function resetAlarmEmailSessionId() {
+  if (typeof window === "undefined" || !window.sessionStorage) {
+    return;
+  }
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}

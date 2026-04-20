@@ -87,6 +87,23 @@ async function upsertRuleAlarmsFromComputed(
     syncContextStreamId !== undefined && syncContextStreamId !== null
       ? String(syncContextStreamId).trim()
       : "";
+  const notifications = {
+    activated: {
+      attempted: 0,
+      delivered: 0,
+      skipped: 0,
+      lastResult: null,
+    },
+    streamFocusDigest: {
+      attempted: false,
+      delivered: false,
+      reason: streamChanged
+        ? "Waiting for evaluation."
+        : "Not a stream-change sync.",
+      recipientCount: 0,
+      digestCount: 0,
+    },
+  };
 
   async function resolveStaleForSyncContext() {
     if (activeKeys.length === 0) {
@@ -205,16 +222,31 @@ async function upsertRuleAlarmsFromComputed(
 
     if (shouldNotify && alarmForNotification && !streamChanged) {
       try {
-        await sendAlarmActivatedNotifications(alarmForNotification, {
+        notifications.activated.attempted += 1;
+        const result = await sendAlarmActivatedNotifications(alarmForNotification, {
           recipientEmails: notificationRecipientEmails,
         });
+        notifications.activated.lastResult = result;
+        if (result?.delivered) {
+          notifications.activated.delivered += 1;
+        } else {
+          notifications.activated.skipped += 1;
+        }
       } catch (error) {
+        notifications.activated.skipped += 1;
+        notifications.activated.lastResult = {
+          channel: "email",
+          enabled: true,
+          delivered: false,
+          reason: error?.message || "Alarm activation notification failed.",
+        };
         console.error("sendAlarmActivatedNotifications:", error);
       }
     }
   }
 
   if (streamChanged && streamId) {
+    notifications.streamFocusDigest.attempted = true;
     try {
       const activeForView = await Alarm.find({
         status: "active",
@@ -225,19 +257,40 @@ async function upsertRuleAlarmsFromComputed(
         shouldSendAlarmNotification(a),
       );
       if (qualifying.length) {
-        await sendStreamFocusAlarmDigest({
+        const result = await sendStreamFocusAlarmDigest({
           streamId,
           alarms: qualifying,
           recipientEmails: notificationRecipientEmails,
           alarmEmailSessionId,
         });
+        notifications.streamFocusDigest = {
+          attempted: true,
+          delivered: Boolean(result?.delivered),
+          reason: result?.reason || null,
+          recipientCount: Array.isArray(result?.recipients)
+            ? result.recipients.length
+            : 0,
+          digestCount: Number(result?.digestCount || qualifying.length || 0),
+        };
+      } else {
+        notifications.streamFocusDigest.reason =
+          "No qualifying active alerts for the selected stream.";
       }
     } catch (error) {
+      notifications.streamFocusDigest = {
+        attempted: true,
+        delivered: false,
+        reason: error?.message || "Stream-focus digest failed.",
+        recipientCount: 0,
+        digestCount: 0,
+      };
       console.error("sendStreamFocusAlarmDigest:", error);
     }
+  } else if (streamChanged && !streamId) {
+    notifications.streamFocusDigest.reason = "Missing stream id.";
   }
 
-  return { evaluated: rows.length, synced: rows.length };
+  return { evaluated: rows.length, synced: rows.length, notifications };
 }
 
 /**

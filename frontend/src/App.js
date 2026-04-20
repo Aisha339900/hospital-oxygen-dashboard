@@ -40,7 +40,10 @@ import {
   getMetricNumericValueForDashboard,
 } from "./utils/alarmLogic.js";
 import { streamsAPI, alarmService } from "./services";
-import { getAlarmEmailSessionId } from "./utils/alarmEmailSession.js";
+import {
+  getAlarmEmailSessionId,
+  resetAlarmEmailSessionId,
+} from "./utils/alarmEmailSession.js";
 import "./App.css";
 
 const MOLAR_FLOW_BANDS_BY_STREAM = {
@@ -725,6 +728,9 @@ function App() {
   const toggleSetting = (key) => {
     setSettings((prev) => {
       const next = { ...prev, [key]: !prev[key] };
+      if (key === "emailAlerts" && next[key]) {
+        resetAlarmEmailSessionId();
+      }
       try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
       } catch {
@@ -755,6 +761,7 @@ function App() {
     } catch {
       /* ignore */
     }
+    resetAlarmEmailSessionId();
     setAuth(null);
     persistAuth(null);
   }, [persistAuth]);
