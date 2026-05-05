@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi";
 import Sidebar from "./components/Sidebar";
 import DashboardPage from "./pages/DashboardPage";
+import QualityChartsPage from "./pages/QualityChartsPage";
 import LogsPage from "./pages/LogsPage";
 import BackupDemandPage from "./pages/BackupDemandPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -1047,6 +1048,7 @@ function App() {
       title: "Dashboards",
       items: [
         { label: "Monitoring", icon: FiBarChart2 },
+        { label: "Quality charts", icon: FiTarget },
         { label: "Predictive Analytics", icon: FiActivity },
       ],
     },
@@ -1104,7 +1106,7 @@ function App() {
     oxygenPurityVsFeedFlow: buildChartDetail("oxygenPurityVsFeedFlow"),
   };
 
-  const viewableDashboards = new Set(["Monitoring", "Predictive Analytics"]);
+  const viewableDashboards = new Set(["Monitoring", "Quality charts", "Predictive Analytics"]);
   const handleDashboardSelection = (label) => {
     closeMobileSidebar();
     if (viewableDashboards.has(label)) {
@@ -1122,6 +1124,7 @@ function App() {
   const isLogsView = activeView === "Logs";
   const isBackupDemandView = activeView === "Backup & Demand";
   const isSettingsView = activeView === "Settings";
+  const isQualityChartsView = activeView === "Quality charts";
   const isPredictiveView = activeView === "Predictive Analytics";
   const isSimulationView = activeView === "Simulation design";
   const trendsAreSimulated = apiResolved && !useLiveApi;
@@ -1188,7 +1191,7 @@ function App() {
           <main
             id="main-content"
             tabIndex={-1}
-            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isBackupDemandView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isPredictiveView || isSimulationView ? "predictive-mode" : ""}`}
+            className={`workspace ${isLogsView ? "logs-mode" : ""} ${isBackupDemandView ? "logs-mode" : ""} ${isSettingsView ? "settings-mode" : ""} ${isQualityChartsView ? "quality-mode" : ""} ${isPredictiveView || isSimulationView ? "predictive-mode" : ""}`}
           >
             {isLogsView ? (
               <LogsPage
@@ -1225,6 +1228,13 @@ function App() {
                   onToggleTheme={toggleTheme}
                   entryMode={simulationEntry}
                 />
+            ) : isQualityChartsView ? (
+              <QualityChartsPage
+                trendData={trendData}
+                detailPayloads={detailPayloads}
+                openChartDetails={openChartDetails}
+                trendChartConfig={TREND_CHARTS}
+              />
             ) : isPredictiveView ? (
               <PredictiveAnalyticsPage />
             ) : (

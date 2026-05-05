@@ -13,6 +13,12 @@ jest.mock('../components/charts/OxygenPurityVsFeedFlowPanel', () => {
   };
 });
 
+jest.mock('../components/charts/PressurePurityCapacityCharts', () => {
+  return function MockPressurePurityCapacityCharts() {
+    return <div>Mock Control Charts</div>;
+  };
+});
+
 jest.mock('../components/dashboard/DashboardReportActions', () => {
   return function MockReportActions() {
     return <div>Mock Report Actions</div>;

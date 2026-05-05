@@ -93,6 +93,7 @@ function DashboardPage({
             chartConfig={trendChartConfig?.oxygenPurityVsFeedFlow}
           />
         </section>
+
       </div>
 
       <aside className="right-rail">

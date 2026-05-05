@@ -9,6 +9,7 @@ const healthController = require("../controllers/healthController");
 const backupStatusController = require("../controllers/backupStatusController");
 const demandStatusController = require("../controllers/demandStatusController");
 const supplyStatusController = require("../controllers/supplyStatusController");
+const pressurePurityCapacityController = require("../controllers/pressurePurityCapacityController");
 const authController = require("../controllers/authController");
 const reportController = require("../controllers/reportController");
 const { requireAuth, optionalAuth } = require("../middleware/authMiddleware");
@@ -58,6 +59,11 @@ router.get(
 //   historyController.getStorageLevelMonthly,
 // );
 router.get("/history/trend-data", historyController.getTrendData);
+
+router.get(
+  "/pressure-purity-capacity/charts",
+  pressurePurityCapacityController.getPressurePurityCapacityCharts,
+);
 
 // Alarm routes
 router.get("/alarms", alarmController.getAllAlarms);
